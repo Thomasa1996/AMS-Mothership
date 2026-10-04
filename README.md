@@ -14,6 +14,8 @@ What's built so far, following the [product plan](https://claude.ai/code/artifac
 - **Warehouses**: branch profiles imported from the branch profile workbook, with capacity notes and a rate card per
   market (defaults from BLS wage data, see `src/lib/market-rates.ts`). Quotes can be priced for a market.
 - **Access**: salespeople see only the accounts they own and their own quotes; admins see everything (`src/lib/access.ts`).
+- **HubSpot sync** (Settings > HubSpot): one-way daily copy of HubSpot companies, contacts and deals into accounts,
+  contacts and projects while the team moves off HubSpot (`src/lib/hubspot-sync.ts`).
 - Operations and Reports are placeholders for later phases.
 
 Every record belongs to a company, so other moving companies can be added later with their data kept separate.
@@ -42,7 +44,8 @@ it refuses to run against anything but localhost.
 1. Import the GitHub repository in Vercel. It runs `npm run vercel-build`, which creates or updates the tables
    (`prisma db push`, which stops rather than drop data) and builds the app.
 2. Add a Postgres database (Vercel Storage, e.g. Neon) so `DATABASE_URL` is set, and add `SESSION_SECRET`
-   (`openssl rand -base64 32`).
+   (`openssl rand -base64 32`). Add `CRON_SECRET` (any long random string) to turn on the daily HubSpot sync
+   scheduled in `vercel.json`.
 3. Open the site. A new database has no users, so it shows the setup screen: create the company and the first
    admin there. The 2026 rate card loads automatically; upload the vendor file (Sales > Vendors > Import) and the
    branch profiles (Warehouses > Import profiles), then add the team under Settings > Team.

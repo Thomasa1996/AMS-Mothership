@@ -26,6 +26,12 @@ model Company {
   quoteCompanyDuties         String?
   quoteClientDuties          String?
   // Policies printed under the rate card (travel time, overtime, minimums).
+  // HubSpot private app token, encrypted (lib/secret-box.ts), and the last sync's outcome.
+  hubspotToken      String?
+  hubspotSyncedAt   DateTime?
+  // Set while a sync runs so two syncs can't overlap and create duplicates.
+  hubspotSyncStartedAt DateTime?
+  hubspotSyncResult String?
   rateCardNotes              String?
 
   users      User[]
@@ -72,6 +78,10 @@ model Account {
   source    String   @default("MANUAL")
   ownerId   String?
   owner     User?    @relation("AccountOwner", fields: [ownerId], references: [id])
+  // Set for accounts synced from HubSpot. The owner name is kept when no teammate has that email.
+  hubspotId         String?
+  hubspotOwnerName  String?
+  hubspotModifiedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -79,6 +89,7 @@ model Account {
   projects   Project[]
   activities Activity[]
 
+  @@index([companyId, hubspotId])
   @@index([companyId])
 }
 
@@ -93,8 +104,11 @@ model Contact {
   email     String?
   phone     String?
   isPrimary Boolean  @default(false)
+  hubspotId         String?
+  hubspotModifiedAt DateTime?
   createdAt DateTime @default(now())
 
+  @@index([companyId, hubspotId])
   @@index([companyId])
 }
 
@@ -114,12 +128,15 @@ model Project {
   managerId          String?
   manager            User?     @relation("ProjectManager", fields: [managerId], references: [id])
   notes              String?
+  hubspotId          String?
+  hubspotModifiedAt  DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
   activities Activity[]
   quotes     Quote[]
 
+  @@index([companyId, hubspotId])
   @@index([companyId, stage])
 }
 
