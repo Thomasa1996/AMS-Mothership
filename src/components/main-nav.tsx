@@ -7,14 +7,14 @@ const TABS = [
   { href: "/crm", label: "CRM" },
   { href: "/operations", label: "Operations" },
   { href: "/sales", label: "Sales" },
-  { href: "/reports", label: "Reports" },
+  { href: "/reports", label: "Reports", adminOnly: true },
 ];
 
-export function MainNav() {
+export function MainNav({ admin }: { admin: boolean }) {
   const pathname = usePathname();
   return (
     <nav className="-mx-1 flex max-w-full gap-1 overflow-x-auto px-1">
-      {TABS.map((tab) => {
+      {TABS.filter((tab) => admin || !("adminOnly" in tab)).map((tab) => {
         const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
         return (
           <Link

@@ -23,7 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Link href="/crm/accounts">
             <Logo />
           </Link>
-          <MainNav />
+          <MainNav admin={user.role === "ADMIN"} />
           <div className="ml-auto flex items-center gap-3 text-sm">
             {/* The quote template logo when one is uploaded, else the bundled Apple Moving logo. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}

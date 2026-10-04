@@ -340,3 +340,15 @@ model RateSheet {
 
   @@unique([companyId, market])
 }
+
+// A Power BI report shown in the Reports tab (admins only), by its secure embed link.
+model PowerBiReport {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  embedUrl  String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([companyId])
+}
