@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/ui";
 import { saveProfile } from "../actions";
 import { ImageInput, SettingsForm } from "../forms";
 import { PhotoUpload } from "@/components/photo-upload";
+import { ThemePicker } from "@/components/theme-picker";
 import { photoUrl } from "@/lib/photos";
 
 export default async function ProfilePage() {
@@ -11,6 +12,10 @@ export default async function ProfilePage() {
   return (
     <div className="max-w-2xl space-y-6">
       <PageHeader title="My profile" subtitle={`${user.email} · ${roleLabel(user.role)}`} />
+      <div className="card p-5">
+        <label className="label">Appearance</label>
+        <ThemePicker current={user.theme} />
+      </div>
       <div className="card p-5">
         <label className="label">Photo</label>
         <PhotoUpload userId={user.id} name={user.name} photoUrl={photoUrl(user)} size="lg" />

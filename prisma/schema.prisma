@@ -60,6 +60,8 @@ model User {
   // Profile photo (a small square JPEG data URL), served by /team-photo/[id]. photoAt versions the URL.
   photo        String?
   photoAt      DateTime?
+  // "dark" or "light", picked in My profile.
+  theme        String   @default("dark")
   createdAt    DateTime @default(now())
 
   ownedAccounts   Account[]  @relation("AccountOwner")

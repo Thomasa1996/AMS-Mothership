@@ -74,7 +74,7 @@ export function PipelineBoard({ projects }: { projects: BoardProject[] }) {
                     key={p.id}
                     draggable
                     onDragStart={(e) => e.dataTransfer.setData("text/plain", p.id)}
-                    className="cursor-grab rounded-md border border-slate-200 bg-white p-2.5 shadow-sm active:cursor-grabbing"
+                    className="cursor-grab rounded-md border border-slate-200 bg-surface p-2.5 shadow-sm active:cursor-grabbing"
                   >
                     <Link href={`/crm/projects/${p.id}`} className="block text-sm font-medium text-slate-900 hover:text-brand-600">
                       {p.name}

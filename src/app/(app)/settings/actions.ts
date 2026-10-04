@@ -136,6 +136,12 @@ export async function saveProfile(_prev: FormState, formData: FormData): Promise
   return { ok: true };
 }
 
+export async function saveTheme(theme: "dark" | "light") {
+  const user = await requireUser();
+  await db.user.update({ where: { id: user.id }, data: { theme: theme === "light" ? "light" : "dark" } });
+  revalidatePath("/", "layout");
+}
+
 // Photos: admins can set anyone's on the Team page; everyone can set their own on My profile.
 
 export async function saveUserPhoto(userId: string, photo: string | null): Promise<FormState> {

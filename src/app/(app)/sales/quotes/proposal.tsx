@@ -105,7 +105,7 @@ export function Proposal({ q }: { q: ProposalData }) {
   const logo = q.company.logo;
 
   return (
-    <div className="proposal space-y-6">
+    <div className="proposal theme-light space-y-6">
       <Page logo={logo}>
         <div className="space-y-0.5">
           <p>{shortDate(q.quoteDate)}</p>

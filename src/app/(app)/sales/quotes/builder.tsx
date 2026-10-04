@@ -382,7 +382,7 @@ export function QuoteBuilder({
           <button type="button" className="btn" onClick={() => addLine()}>Add custom line</button>
           <details className="relative">
             <summary className="btn cursor-pointer list-none">Add from rate card</summary>
-            <div className="absolute z-10 mt-1 max-h-96 w-[28rem] max-w-[90vw] overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
+            <div className="absolute z-10 mt-1 max-h-96 w-[28rem] max-w-[90vw] overflow-y-auto rounded-lg border border-slate-200 bg-surface p-2 shadow-lg">
               <input className="input mb-2" placeholder="Search the rate card" value={rateFilter} onChange={(e) => setRateFilter(e.target.value)} />
               {rateGroups.length === 0 && <p className="p-2 text-sm text-slate-500">No matching rates.</p>}
               {rateGroups.map(([category, items]) => (
@@ -429,7 +429,7 @@ export function QuoteBuilder({
         </div>
       </details>
 
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur">
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-surface/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-end gap-3">
           {error && <p className="mr-auto text-sm text-red-600">{error}</p>}
           <span className="text-sm text-slate-500">
