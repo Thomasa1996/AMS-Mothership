@@ -13,7 +13,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
     where: {
       ...projectScope(user),
       ...(stage ? { stage } : {}),
-      ...(q ? { OR: [{ name: { contains: q } }, { account: { name: { contains: q } } }] } : {}),
+      ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" as const } }, { account: { name: { contains: q, mode: "insensitive" as const } } }] } : {}),
     },
     include: { account: { select: { id: true, name: true } }, manager: { select: { name: true } } },
     orderBy: [{ moveDate: "asc" }, { createdAt: "desc" }],

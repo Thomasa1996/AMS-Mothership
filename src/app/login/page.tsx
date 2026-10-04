@@ -1,7 +1,13 @@
+import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
 import { Logo } from "@/components/logo";
 import { LoginForm } from "./login-form";
 
-export default function LoginPage() {
+export const dynamic = "force-dynamic";
+
+export default async function LoginPage() {
+  // A brand-new installation has no one to sign in as yet.
+  if (!(await db.user.count())) redirect("/setup");
   return (
     <main
       className="relative flex min-h-screen items-end justify-center bg-brand-900 bg-cover bg-center px-4 py-10 md:items-center md:justify-end md:px-8"

@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "vercel-build": "prisma generate && prisma db push --skip-generate && next build",
+    "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "rm -f prisma/dev.db prisma/dev.db-journal && prisma db push && tsx prisma/seed.ts",
+    "db:reset": "tsx scripts/reset-db.ts && prisma db push && tsx prisma/seed.ts",
     "import:vendors": "tsx scripts/import-vendors.ts",
     "import:branches": "tsx scripts/import-branches.ts"
   },

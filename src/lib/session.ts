@@ -10,6 +10,9 @@ export type SessionPayload = { userId: string; companyId: string; role: string }
 function secretKey(): Uint8Array {
   const secret = process.env.SESSION_SECRET;
   if (!secret || secret.length < 16) throw new Error("SESSION_SECRET must be set to at least 16 characters");
+  if (process.env.NODE_ENV === "production" && secret.startsWith("change-me")) {
+    throw new Error("SESSION_SECRET is still the example value; set a long random string");
+  }
   return new TextEncoder().encode(secret);
 }
 

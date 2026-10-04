@@ -15,7 +15,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
     db.account.findMany({
       where: {
         ...accountScope(user),
-        ...(q ? { name: { contains: q } } : {}),
+        ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
         ...(owner === "me" ? { ownerId: user.id } : owner ? { ownerId: owner } : {}),
       },
       include: {

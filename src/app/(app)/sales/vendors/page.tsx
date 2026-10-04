@@ -19,11 +19,11 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
     ...(q
       ? {
           OR: [
-            { name: { contains: q } },
-            { contactName: { contains: q } },
-            { email: { contains: q } },
-            { address: { contains: q } },
-            { markets: { contains: q } },
+            { name: { contains: q, mode: "insensitive" as const } },
+            { contactName: { contains: q, mode: "insensitive" as const } },
+            { email: { contains: q, mode: "insensitive" as const } },
+            { address: { contains: q, mode: "insensitive" as const } },
+            { markets: { contains: q, mode: "insensitive" as const } },
           ],
         }
       : {}),

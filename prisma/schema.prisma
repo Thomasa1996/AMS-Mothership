@@ -1,13 +1,13 @@
 // Mothership data model.
 // Every business record carries companyId so each moving company (tenant) only sees its own data.
-// Local development uses SQLite; switch provider to "postgresql" for production.
+// Uses PostgreSQL locally and in production (DATABASE_URL).
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

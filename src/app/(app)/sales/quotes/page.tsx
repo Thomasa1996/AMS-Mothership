@@ -18,7 +18,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
         ...(status ? { status } : {}),
         ...(mine ? { createdById: user.id } : {}),
         ...(q
-          ? { OR: [{ title: { contains: q } }, { project: { name: { contains: q } } }, { project: { account: { name: { contains: q } } } }] }
+          ? { OR: [{ title: { contains: q, mode: "insensitive" as const } }, { project: { name: { contains: q, mode: "insensitive" as const } } }, { project: { account: { name: { contains: q, mode: "insensitive" as const } } } }] }
           : {}),
       },
       include: {
