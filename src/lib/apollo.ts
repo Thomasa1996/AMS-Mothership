@@ -51,29 +51,45 @@ async function post<T>(key: string, path: string, params: Params): Promise<T> {
 
 export const SENIORITIES = [
   { id: "owner", label: "Owner" },
+  { id: "founder", label: "Founder" },
   { id: "c_suite", label: "C-suite" },
+  { id: "partner", label: "Partner" },
   { id: "vp", label: "VP" },
+  { id: "head", label: "Head" },
   { id: "director", label: "Director" },
   { id: "manager", label: "Manager" },
   { id: "senior", label: "Senior" },
+  { id: "entry", label: "Entry" },
 ] as const;
 
 export const COMPANY_SIZES = [
-  { id: "1,50", label: "1 to 50" },
+  { id: "1,10", label: "1 to 10" },
+  { id: "11,50", label: "11 to 50" },
   { id: "51,200", label: "51 to 200" },
-  { id: "201,1000", label: "201 to 1,000" },
+  { id: "201,500", label: "201 to 500" },
+  { id: "501,1000", label: "501 to 1,000" },
   { id: "1001,5000", label: "1,001 to 5,000" },
-  { id: "5001,1000000", label: "5,001 or more" },
+  { id: "5001,10000", label: "5,001 to 10,000" },
+  { id: "10001,1000000", label: "10,001 or more" },
 ] as const;
+
+export const PAGE_SIZES = [25, 50, 100] as const;
 
 export type PeopleSearch = {
   keywords?: string;
   titles: string[];
+  exactTitles?: boolean;
   personLocations: string[];
   companyLocations: string[];
   seniorities: string[];
   sizes: string[];
+  industries?: string[];
+  domains?: string[];
+  revenueMin?: number;
+  revenueMax?: number;
+  verifiedEmail?: boolean;
   page: number;
+  perPage?: number;
 };
 
 export type ApolloSearchPerson = {
@@ -88,16 +104,23 @@ export type ApolloSearchPerson = {
 
 export const PER_PAGE = 25;
 
+
 export async function searchPeople(key: string, s: PeopleSearch) {
   const res = await post<{ total_entries?: number; people?: ApolloSearchPerson[] }>(key, "/api/v1/mixed_people/api_search", {
     q_keywords: s.keywords,
     person_titles: s.titles,
+    include_similar_titles: s.exactTitles && s.titles.length ? false : undefined,
     person_locations: s.personLocations,
     organization_locations: s.companyLocations,
     person_seniorities: s.seniorities,
     organization_num_employees_ranges: s.sizes,
+    q_organization_keyword_tags: s.industries,
+    q_organization_domains_list: s.domains,
+    "revenue_range[min]": s.revenueMin,
+    "revenue_range[max]": s.revenueMax,
+    contact_email_status: s.verifiedEmail ? ["verified"] : undefined,
     page: s.page,
-    per_page: PER_PAGE,
+    per_page: s.perPage ?? PER_PAGE,
   });
   return { total: res.total_entries ?? 0, people: res.people ?? [] };
 }
@@ -168,4 +191,12 @@ export const splitList = (v: string | null | undefined) =>
     .split(/[,;\n]/)
     .map((s) => s.trim())
     .filter(Boolean)
-    .slice(0, 20);
+    .slice(0, 50);
+
+// "$5M", "5,000,000", "2.5m", "750k" -> dollars. Blank or unreadable -> undefined.
+export function parseMoney(v: string | null | undefined) {
+  const m = (v ?? "").trim().toLowerCase().replace(/[$,\s]/g, "").match(/^(\d+(?:\.\d+)?)([kmb]?)$/);
+  if (!m) return undefined;
+  const mult = { "": 1, k: 1e3, m: 1e6, b: 1e9 }[m[2] as "" | "k" | "m" | "b"];
+  return Math.round(Number(m[1]) * mult);
+}

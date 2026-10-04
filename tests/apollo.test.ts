@@ -31,3 +31,15 @@ describe("Apollo", () => {
     expect(personToContact({ id: "x", first_name: "A", last_name: "B", email: "email_not_unlocked@domain.com" }).email).toBeNull();
   });
 });
+
+describe("revenue filter", () => {
+  it("reads money the way reps type it", async () => {
+    const { parseMoney } = await import("@/lib/apollo");
+    expect(parseMoney("$5M")).toBe(5_000_000);
+    expect(parseMoney("2.5m")).toBe(2_500_000);
+    expect(parseMoney("750k")).toBe(750_000);
+    expect(parseMoney("1,000,000")).toBe(1_000_000);
+    expect(parseMoney("")).toBeUndefined();
+    expect(parseMoney("lots")).toBeUndefined();
+  });
+});

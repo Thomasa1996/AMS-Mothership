@@ -45,7 +45,7 @@ export async function addFromApollo(apolloId: string): Promise<AddState> {
     });
     return account;
   });
-  revalidatePath("/sales/new-business");
+  revalidatePath("/sales/new-business", "layout");
   revalidatePath("/crm");
   return { ok: true, accountId: result.id, accountName: result.name, mine: result.ownerId === user.id };
 }
