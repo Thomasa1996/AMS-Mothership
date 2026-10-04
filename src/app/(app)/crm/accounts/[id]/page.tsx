@@ -8,6 +8,7 @@ import { Avatar, EmptyState, Field, PageHeader, StageBadge } from "@/components/
 import { addActivity, createContact, deleteAccount, deleteContact, updateAccount } from "../../actions";
 import { AccountForm, ActivityForm, ConfirmButton, ContactForm } from "../../forms";
 import { ActivityFeed } from "../../activity-feed";
+import { photoUrl } from "@/lib/photos";
 
 export default async function AccountPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
@@ -15,7 +16,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
   const account = await db.account.findFirst({
     where: { id, ...accountScope(user) },
     include: {
-      owner: true,
+      owner: { select: { id: true, name: true, photoAt: true } },
       contacts: { orderBy: [{ isPrimary: "desc" }, { name: "asc" }] },
       projects: { orderBy: { createdAt: "desc" }, include: { manager: { select: { name: true } } } },
       activities: {
@@ -37,7 +38,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
             {account.industry && <span>{account.industry}</span>}
             {account.owner && (
               <span className="flex items-center gap-1.5">
-                · Owner <Avatar name={account.owner.name} /> {account.owner.name}
+                · Owner <Avatar name={account.owner.name} photoUrl={photoUrl(account.owner)} /> {account.owner.name}
               </span>
             )}
             {!account.owner && account.hubspotOwnerName && (

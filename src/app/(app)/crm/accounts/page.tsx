@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { accountScope, limitedToOwn } from "@/lib/access";
 import { formatCurrency } from "@/lib/format";
 import { Avatar, EmptyState, PageHeader } from "@/components/ui";
+import { photoUrl } from "@/lib/photos";
 
 const OPEN_STAGES = ["LEAD", "SURVEY", "QUOTED", "BOOKED", "IN_PROGRESS"];
 
@@ -19,7 +20,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
         ...(owner === "me" ? { ownerId: user.id } : owner ? { ownerId: owner } : {}),
       },
       include: {
-        owner: { select: { name: true } },
+        owner: { select: { id: true, name: true, photoAt: true } },
         contacts: { where: { isPrimary: true }, take: 1, select: { name: true } },
         projects: { select: { stage: true, estimatedValue: true } },
         _count: { select: { contacts: true } },
@@ -82,7 +83,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
                     <td>
                       {a.owner && (
                         <span className="flex items-center gap-2">
-                          <Avatar name={a.owner.name} /> {a.owner.name}
+                          <Avatar name={a.owner.name} photoUrl={photoUrl(a.owner)} /> {a.owner.name}
                         </span>
                       )}
                       {!a.owner && a.hubspotOwnerName && (

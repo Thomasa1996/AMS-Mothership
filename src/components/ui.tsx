@@ -15,11 +15,16 @@ export function StageBadge({ stage }: { stage: string }) {
   return <span className={`badge ${STAGE_COLORS[stage] ?? "bg-slate-100"}`}>{stageLabel(stage)}</span>;
 }
 
-export function Avatar({ name }: { name: string }) {
+export function Avatar({ name, photoUrl, size = "sm" }: { name: string; photoUrl?: string | null; size?: "sm" | "md" | "lg" }) {
+  const box = { sm: "h-6 w-6 text-[10px]", md: "h-9 w-9 text-xs", lg: "h-16 w-16 text-lg" }[size];
+  if (photoUrl) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={photoUrl} alt={name} title={name} className={`inline-block shrink-0 rounded-full object-cover ${box}`} />;
+  }
   return (
     <span
       title={name}
-      className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-100 text-[10px] font-semibold text-brand-700"
+      className={`inline-flex shrink-0 items-center justify-center rounded-full bg-brand-100 font-semibold text-brand-700 ${box}`}
     >
       {initials(name)}
     </span>

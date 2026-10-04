@@ -57,6 +57,9 @@ model User {
   title        String?
   // Signature image (data URL) printed on quotes this person prepares.
   signature    String?
+  // Profile photo (a small square JPEG data URL), served by /team-photo/[id]. photoAt versions the URL.
+  photo        String?
+  photoAt      DateTime?
   createdAt    DateTime @default(now())
 
   ownedAccounts   Account[]  @relation("AccountOwner")

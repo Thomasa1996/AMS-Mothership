@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { marketRateCents } from "@/lib/market-rates";
+import { decodePhoto, MAX_PHOTO_CHARS } from "@/lib/photos";
 import { requireUser } from "@/lib/auth";
 import { parseDollarsToCents } from "@/lib/quote-math";
 import { firstError, formToObject, type FormState } from "@/lib/validation";
@@ -131,6 +132,21 @@ export async function saveProfile(_prev: FormState, formData: FormData): Promise
   const parsed = ProfileSchema.safeParse(formToObject(formData));
   if (!parsed.success) return { error: firstError(parsed.error) };
   await db.user.update({ where: { id: user.id }, data: parsed.data });
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+// Photos: admins can set anyone's on the Team page; everyone can set their own on My profile.
+
+export async function saveUserPhoto(userId: string, photo: string | null): Promise<FormState> {
+  const user = await requireUser();
+  if (userId !== user.id && user.role !== "ADMIN") return { error: "Only admins can change someone else's photo" };
+  if (photo !== null && (!decodePhoto(photo) || photo.length > MAX_PHOTO_CHARS)) return { error: "That image couldn't be used. Try a JPG or PNG." };
+  const { count } = await db.user.updateMany({
+    where: { id: userId, companyId: user.companyId },
+    data: { photo, photoAt: photo ? new Date() : null },
+  });
+  if (!count) return { error: "Teammate not found" };
   revalidatePath("/", "layout");
   return { ok: true };
 }

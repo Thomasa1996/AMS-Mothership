@@ -2,26 +2,33 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { ROLES } from "@/lib/constants";
-import { Avatar, PageHeader } from "@/components/ui";
+import { PageHeader } from "@/components/ui";
+import { PhotoUpload } from "@/components/photo-upload";
+import { photoUrl } from "@/lib/photos";
 import { changeRole } from "./actions";
 import { NewUserForm } from "./forms";
 
 export default async function UsersPage() {
   const user = await requireUser();
   if (user.role !== "ADMIN") redirect("/settings/profile");
-  const users = await db.user.findMany({ where: { companyId: user.companyId }, orderBy: { name: "asc" } });
+  const users = await db.user.findMany({
+    where: { companyId: user.companyId },
+    select: { id: true, name: true, email: true, role: true, photoAt: true },
+    orderBy: { name: "asc" },
+  });
   return (
     <div className="max-w-3xl space-y-6">
-      <PageHeader title="Team" subtitle={`${users.length} people at ${user.company.name}`} />
+      <PageHeader title="Team" subtitle={`${users.length} people at ${user.company.name}. Click Add photo next to anyone to upload their picture.`} />
       <div className="card overflow-x-auto">
         <table className="table">
           <thead>
-            <tr><th>Name</th><th>Email</th><th>Role</th></tr>
+            <tr><th>Photo</th><th>Name</th><th>Email</th><th>Role</th></tr>
           </thead>
           <tbody>
             {users.map((u) => (
               <tr key={u.id}>
-                <td><span className="flex items-center gap-2"><Avatar name={u.name} /> {u.name}</span></td>
+                <td><PhotoUpload userId={u.id} name={u.name} photoUrl={photoUrl(u)} /></td>
+                <td className="font-medium">{u.name}</td>
                 <td className="text-slate-600">{u.email}</td>
                 <td>
                   <form action={changeRole.bind(null, u.id)} className="flex gap-2">

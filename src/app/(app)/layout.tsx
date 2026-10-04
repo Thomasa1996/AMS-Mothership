@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { roleLabel } from "@/lib/constants";
 import { logout } from "@/app/login/actions";
 import { Logo } from "@/components/logo";
+import { photoUrl } from "@/lib/photos";
 import { MainNav } from "@/components/main-nav";
 import { Avatar } from "@/components/ui";
 
@@ -22,7 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               Settings
             </Link>
             <span className="flex items-center gap-2" title={roleLabel(user.role)}>
-              <Avatar name={user.name} />
+              <Avatar name={user.name} photoUrl={photoUrl(user)} />
               <span className="hidden md:inline">{user.name}</span>
             </span>
             <form action={logout}>
