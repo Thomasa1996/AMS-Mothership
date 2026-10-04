@@ -40,6 +40,9 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
                 · Owner <Avatar name={account.owner.name} /> {account.owner.name}
               </span>
             )}
+            {!account.owner && account.hubspotOwnerName && (
+              <span title="No teammate has this owner's HubSpot email yet">· HubSpot owner {account.hubspotOwnerName}</span>
+            )}
           </span>
         }
         actions={

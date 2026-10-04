@@ -9,6 +9,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           { href: "/settings/users", label: "Team" },
           { href: "/settings/rates", label: "Rate card" },
           { href: "/settings/quote-template", label: "Quote template" },
+          { href: "/settings/hubspot", label: "HubSpot" },
         ]}
       />
       {children}

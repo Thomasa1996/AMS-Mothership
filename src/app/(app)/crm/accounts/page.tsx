@@ -85,6 +85,11 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
                           <Avatar name={a.owner.name} /> {a.owner.name}
                         </span>
                       )}
+                      {!a.owner && a.hubspotOwnerName && (
+                        <span className="text-slate-500" title="No teammate has this owner's HubSpot email yet">
+                          {a.hubspotOwnerName} (HubSpot)
+                        </span>
+                      )}
                     </td>
                     <td className="text-right">{open.length || ""}</td>
                     <td className="text-right font-medium">{pipeline ? formatCurrency(pipeline) : ""}</td>
