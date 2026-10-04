@@ -9,7 +9,12 @@ export const getCurrentUser = cache(async () => {
   const store = await cookies();
   const session = await verifySession(store.get(SESSION_COOKIE)?.value);
   if (!session) return null;
-  const user = await db.user.findUnique({ where: { id: session.userId }, include: { company: true } });
+  const user = await db.user.findUnique({
+    where: { id: session.userId },
+    include: { company: true },
+    // Pictures are served by their own routes; no need to load them on every request.
+    omit: { photo: true, background: true },
+  });
   if (!user || user.companyId !== session.companyId) return null;
   return user;
 });

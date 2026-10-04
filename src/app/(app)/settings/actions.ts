@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { marketRateCents } from "@/lib/market-rates";
-import { decodePhoto, MAX_PHOTO_CHARS } from "@/lib/photos";
+import { decodePhoto, MAX_BACKGROUND_CHARS, MAX_PHOTO_CHARS } from "@/lib/photos";
 import { requireUser } from "@/lib/auth";
 import { parseDollarsToCents } from "@/lib/quote-math";
 import { firstError, formToObject, type FormState } from "@/lib/validation";
@@ -140,6 +140,15 @@ export async function saveTheme(theme: "dark" | "light") {
   const user = await requireUser();
   await db.user.update({ where: { id: user.id }, data: { theme: theme === "light" ? "light" : "dark" } });
   revalidatePath("/", "layout");
+}
+
+// Each person sets their own background picture.
+export async function saveBackground(image: string | null): Promise<FormState> {
+  const user = await requireUser();
+  if (image !== null && (!decodePhoto(image) || image.length > MAX_BACKGROUND_CHARS)) return { error: "That image couldn't be used. Try a JPG or PNG." };
+  await db.user.update({ where: { id: user.id }, data: { background: image, backgroundAt: image ? new Date() : null } });
+  revalidatePath("/", "layout");
+  return { ok: true };
 }
 
 // Photos: admins can set anyone's on the Team page; everyone can set their own on My profile.

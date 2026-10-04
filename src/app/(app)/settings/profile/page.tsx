@@ -5,7 +5,8 @@ import { saveProfile } from "../actions";
 import { ImageInput, SettingsForm } from "../forms";
 import { PhotoUpload } from "@/components/photo-upload";
 import { ThemePicker } from "@/components/theme-picker";
-import { photoUrl } from "@/lib/photos";
+import { BackgroundUpload } from "@/components/background-upload";
+import { backgroundUrl, photoUrl } from "@/lib/photos";
 
 export default async function ProfilePage() {
   const user = await requireUser();
@@ -15,6 +16,8 @@ export default async function ProfilePage() {
       <div className="card p-5">
         <label className="label">Appearance</label>
         <ThemePicker current={user.theme} />
+        <label className="label mt-5">Background picture</label>
+        <BackgroundUpload current={backgroundUrl(user)} />
       </div>
       <div className="card p-5">
         <label className="label">Photo</label>

@@ -3,14 +3,21 @@ import { requireUser } from "@/lib/auth";
 import { roleLabel } from "@/lib/constants";
 import { logout } from "@/app/login/actions";
 import { Logo } from "@/components/logo";
-import { photoUrl } from "@/lib/photos";
+import { backgroundUrl, photoUrl } from "@/lib/photos";
 import { MainNav } from "@/components/main-nav";
 import { Avatar } from "@/components/ui";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
+  const background = backgroundUrl(user);
   return (
     <div className="min-h-screen">
+      {background && (
+        // The person's own picture behind everything, dimmed so page text stays readable.
+        <div className="fixed inset-0 -z-10 bg-cover bg-center print:hidden" style={{ backgroundImage: `url(${background})` }}>
+          <div className="absolute inset-0 bg-slate-50/75" />
+        </div>
+      )}
       <header className="bg-brand-900 text-white print:hidden">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 overflow-hidden px-4 py-2.5">
           <Link href="/crm/accounts">
