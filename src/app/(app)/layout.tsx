@@ -18,7 +18,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </Link>
           <MainNav />
           <div className="ml-auto flex items-center gap-3 text-sm">
-            <span className="hidden text-white/70 sm:inline">{user.company.name}</span>
+            {/* The quote template logo when one is uploaded, else the bundled Apple Moving logo. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={user.company.logo ?? "/company-logo.png"}
+              alt={user.company.name}
+              title={user.company.name}
+              className="hidden h-8 max-w-32 rounded bg-white object-contain px-1.5 py-0.5 sm:block"
+            />
             <Link href={user.role === "ADMIN" ? "/settings/users" : "/settings/profile"} className="text-white/70 hover:text-white">
               Settings
             </Link>
