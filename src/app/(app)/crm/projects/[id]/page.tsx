@@ -26,7 +26,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   if (!project) notFound();
   const [accounts, users] = await Promise.all([
     db.account.findMany({ where: accountScope(user), select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    db.user.findMany({ where: { companyId: user.companyId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    db.user.findMany({ where: { companyId: user.companyId, active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
   const contact = project.account.contacts[0];
 

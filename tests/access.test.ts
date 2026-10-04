@@ -16,7 +16,7 @@ describe("access scopes", () => {
     expect(accountScope(admin)).toEqual({ companyId: "c1" });
     expect(projectScope(admin)).toEqual({ companyId: "c1" });
     expect(quoteScope(admin)).toEqual({ companyId: "c1" });
-    expect(ownerChoices(admin)).toEqual({ companyId: "c1" });
+    expect(ownerChoices(admin)).toEqual({ companyId: "c1", active: true });
   });
 
   it("gives salespeople their own accounts, those accounts' projects, and their quotes", () => {
@@ -26,6 +26,6 @@ describe("access scopes", () => {
       companyId: "c1",
       OR: [{ createdById: "u-rep" }, { project: { account: { ownerId: "u-rep" } } }],
     });
-    expect(ownerChoices(rep)).toEqual({ companyId: "c1", id: "u-rep" });
+    expect(ownerChoices(rep)).toEqual({ companyId: "c1", active: true, id: "u-rep" });
   });
 });

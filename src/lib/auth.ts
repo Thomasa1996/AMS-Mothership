@@ -15,7 +15,7 @@ export const getCurrentUser = cache(async () => {
     // Pictures are served by their own routes; no need to load them on every request.
     omit: { photo: true, background: true },
   });
-  if (!user || user.companyId !== session.companyId) return null;
+  if (!user || !user.active || user.companyId !== session.companyId) return null;
   return user;
 });
 

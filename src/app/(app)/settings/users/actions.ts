@@ -28,7 +28,7 @@ export async function createUser(_prev: FormState, formData: FormData): Promise<
   const parsed = NewUserSchema.safeParse(formToObject(formData));
   if (!parsed.success) return { error: firstError(parsed.error) };
   const exists = await db.user.findUnique({ where: { email: parsed.data.email } });
-  if (exists) return { error: "Someone already uses that email" };
+  if (exists) return { error: exists.active ? "Someone already uses that email" : "That person was removed from the team. Use Restore under Removed instead." };
   const { password, ...rest } = parsed.data;
   await db.user.create({
     data: { ...rest, passwordHash: await bcrypt.hash(password, 10), companyId: admin.companyId },
@@ -42,5 +42,33 @@ export async function changeRole(userId: string, formData: FormData) {
   const role = z.enum(roleIds).parse(formData.get("role"));
   if (userId === admin.id && role !== "ADMIN") throw new Error("You can't remove your own admin role");
   await db.user.updateMany({ where: { id: userId, companyId: admin.companyId }, data: { role } });
+  revalidatePath("/settings/users");
+}
+
+// Removing someone keeps their history (notes, quotes) but stops them signing in. Their accounts,
+// projects they manage and their prospect lists go to the teammate the admin picks.
+export async function removeUser(userId: string, handToId: string): Promise<FormState> {
+  const admin = await requireAdmin();
+  if (userId === admin.id) return { error: "You can't remove yourself" };
+  const [person, handTo] = await Promise.all([
+    db.user.findFirst({ where: { id: userId, companyId: admin.companyId, active: true } }),
+    db.user.findFirst({ where: { id: handToId, companyId: admin.companyId, active: true } }),
+  ]);
+  if (!person) return { error: "That person isn't on the team" };
+  if (!handTo || handTo.id === person.id) return { error: "Pick who takes over their accounts" };
+  await db.$transaction([
+    db.account.updateMany({ where: { companyId: admin.companyId, ownerId: person.id }, data: { ownerId: handTo.id } }),
+    db.project.updateMany({ where: { companyId: admin.companyId, managerId: person.id }, data: { managerId: handTo.id } }),
+    db.prospectList.updateMany({ where: { companyId: admin.companyId, ownerId: person.id }, data: { ownerId: handTo.id } }),
+    db.user.update({ where: { id: person.id }, data: { active: false } }),
+  ]);
+  revalidatePath("/settings/users");
+  revalidatePath("/crm");
+  return { ok: true };
+}
+
+export async function restoreUser(userId: string) {
+  const admin = await requireAdmin();
+  await db.user.updateMany({ where: { id: userId, companyId: admin.companyId }, data: { active: true } });
   revalidatePath("/settings/users");
 }

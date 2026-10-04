@@ -134,7 +134,7 @@ export async function syncHubSpot(db: PrismaClient, companyId: string, token: st
   ]);
 
   // Owners -> teammates by email.
-  const users = await db.user.findMany({ where: { companyId }, select: { id: true, email: true } });
+  const users = await db.user.findMany({ where: { companyId, active: true }, select: { id: true, email: true } });
   const userByEmail = new Map(users.map((u) => [u.email.toLowerCase(), u.id]));
   const ownerInfo = new Map(
     owners.map((o) => [

@@ -24,5 +24,5 @@ export function quoteScope(user: Viewer): Prisma.QuoteWhereInput {
 
 // People a user may pick as an account owner: the whole team for admins, just themselves for salespeople.
 export function ownerChoices(user: Viewer): Prisma.UserWhereInput {
-  return { companyId: user.companyId, ...(limitedToOwn(user) ? { id: user.id } : {}) };
+  return { companyId: user.companyId, active: true, ...(limitedToOwn(user) ? { id: user.id } : {}) };
 }

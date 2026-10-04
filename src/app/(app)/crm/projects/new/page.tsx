@@ -10,7 +10,7 @@ export default async function NewProjectPage({ searchParams }: { searchParams: P
   const { accountId } = await searchParams;
   const [accounts, users] = await Promise.all([
     db.account.findMany({ where: accountScope(user), select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    db.user.findMany({ where: { companyId: user.companyId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    db.user.findMany({ where: { companyId: user.companyId, active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
   return (
     <div className="max-w-3xl">

@@ -70,6 +70,8 @@ model User {
   photoAt      DateTime?
   // "dark" or "light", picked in My profile.
   theme        String   @default("dark")
+  // false once an admin removes them from the team: they can't sign in, but their history stays.
+  active       Boolean  @default(true)
   // Optional background picture behind the app (a JPEG data URL), served by /user-background/[id].
   background   String?
   backgroundAt DateTime?
@@ -416,4 +418,28 @@ model ProspectListItem {
   addedAt     DateTime     @default(now())
 
   @@unique([listId, apolloId])
+}
+
+// Training tab: a library of PDFs and links (videos, SharePoint pages) admins post for the team.
+// The PDF bytes live in TrainingFile so listing the library doesn't load them.
+model TrainingItem {
+  id          String        @id @default(cuid())
+  companyId   String
+  title       String
+  category    String
+  description String?
+  url         String?
+  fileName    String?
+  size        Int?
+  createdAt   DateTime      @default(now())
+  file        TrainingFile?
+
+  @@index([companyId])
+}
+
+model TrainingFile {
+  id     String       @id @default(cuid())
+  itemId String       @unique
+  item   TrainingItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  data   Bytes
 }
