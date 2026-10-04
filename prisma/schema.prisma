@@ -326,3 +326,17 @@ model BranchRate {
 
   @@unique([branchId, rateItemId])
 }
+
+// A PDF rate sheet an admin uploads for a market, downloaded from Sales > Rate card.
+// market is a Branch id, or "standard" for the standard rate card.
+model RateSheet {
+  id         String   @id @default(cuid())
+  companyId  String
+  market     String
+  fileName   String
+  data       Bytes
+  size       Int
+  uploadedAt DateTime @default(now())
+
+  @@unique([companyId, market])
+}

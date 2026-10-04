@@ -4,6 +4,11 @@ import { requireUser } from "@/lib/auth";
 import { formatCents } from "@/lib/quote-math";
 import { rateCardFor } from "@/lib/branches";
 import { PageHeader } from "@/components/ui";
+import { ConfirmButton } from "@/app/(app)/crm/forms";
+import { removeRateSheet } from "./actions";
+import { RateSheetUpload } from "./rate-sheet-form";
+
+const day = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "America/New_York" });
 
 export default async function RateCardPage({ searchParams }: { searchParams: Promise<{ market?: string }> }) {
   const user = await requireUser();
@@ -12,6 +17,12 @@ export default async function RateCardPage({ searchParams }: { searchParams: Pro
   const branch = branches.find((b) => b.id === market) ?? null;
   const rates = await rateCardFor(user.companyId, branch?.id ?? null);
   const categories = [...new Set(rates.map((r) => r.category))];
+  const marketKey = branch?.id ?? "standard";
+  const sheet = await db.rateSheet.findUnique({
+    where: { companyId_market: { companyId: user.companyId, market: marketKey } },
+    select: { fileName: true, size: true, uploadedAt: true },
+  });
+  const admin = user.role === "ADMIN";
   return (
     <div>
       <PageHeader
@@ -32,6 +43,32 @@ export default async function RateCardPage({ searchParams }: { searchParams: Pro
           </select>
           <button className="btn">Show</button>
         </form>
+      )}
+      {(sheet || admin) && (
+        <section className="card mb-6 flex flex-wrap items-center justify-between gap-3 p-4">
+          <div className="text-sm">
+            <p className="font-semibold">{branch ? `${branch.name} rate sheet (PDF)` : "Standard rate sheet (PDF)"}</p>
+            {sheet ? (
+              <p className="text-slate-500">
+                {sheet.fileName} · {Math.max(1, Math.round(sheet.size / 1024))} KB · uploaded {day.format(sheet.uploadedAt)}
+              </p>
+            ) : (
+              <p className="text-slate-500">No PDF uploaded for this market yet.</p>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {sheet && <a href={`/rate-sheet/${marketKey}`} className="btn btn-primary">Download PDF</a>}
+            {admin && <RateSheetUpload key={marketKey} market={marketKey} hasSheet={!!sheet} />}
+            {admin && sheet && (
+              <ConfirmButton
+                action={removeRateSheet.bind(null, marketKey)}
+                label="Remove"
+                confirmText="Remove this rate sheet PDF?"
+                className="text-sm text-slate-500 hover:text-red-600"
+              />
+            )}
+          </div>
+        </section>
       )}
       <div className="columns-1 gap-6 lg:columns-2">
         {categories.map((category) => (
