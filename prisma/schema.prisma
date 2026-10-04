@@ -1,0 +1,150 @@
+// Mothership data model.
+// Every business record carries companyId so each moving company (tenant) only sees its own data.
+// Local development uses SQLite; switch provider to "postgresql" for production.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  users      User[]
+  accounts   Account[]
+  contacts   Contact[]
+  projects   Project[]
+  activities Activity[]
+  vendors    Vendor[]
+}
+
+// Roles: ADMIN, SALES, PROJECT_MANAGER, WAREHOUSE, CREW
+model User {
+  id           String   @id @default(cuid())
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id])
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("SALES")
+  createdAt    DateTime @default(now())
+
+  ownedAccounts   Account[]  @relation("AccountOwner")
+  managedProjects Project[]  @relation("ProjectManager")
+  activities      Activity[]
+}
+
+model Account {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  name      String
+  industry  String?
+  website   String?
+  phone     String?
+  address   String?
+  // Where the account came from: MANUAL, APOLLO, HUBSPOT
+  source    String   @default("MANUAL")
+  ownerId   String?
+  owner     User?    @relation("AccountOwner", fields: [ownerId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contacts   Contact[]
+  projects   Project[]
+  activities Activity[]
+
+  @@index([companyId])
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  name      String
+  title     String?
+  email     String?
+  phone     String?
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([companyId])
+}
+
+// Stages: LEAD, SURVEY, QUOTED, BOOKED, IN_PROGRESS, COMPLETED, LOST
+model Project {
+  id                 String    @id @default(cuid())
+  companyId          String
+  company            Company   @relation(fields: [companyId], references: [id])
+  accountId          String
+  account            Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  name               String
+  stage              String    @default("LEAD")
+  originAddress      String?
+  destinationAddress String?
+  moveDate           DateTime?
+  estimatedValue     Int?
+  managerId          String?
+  manager            User?     @relation("ProjectManager", fields: [managerId], references: [id])
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  activities Activity[]
+
+  @@index([companyId, stage])
+}
+
+// Types: NOTE, CALL, EMAIL, MEETING, STAGE_CHANGE
+model Activity {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   @default("NOTE")
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([companyId, accountId])
+}
+
+// Vendors and partner movers the sales team works with, one row per vendor contact.
+// Category is the vendor type (e.g. "Interstate Movers", "Crane Rentals"), matching the sheets in the vendor file.
+model Vendor {
+  id                 String   @id @default(cuid())
+  companyId          String
+  company            Company  @relation(fields: [companyId], references: [id])
+  category           String
+  // Row order from the imported file; new vendors added in the app go last.
+  position           Int      @default(0)
+  name               String
+  memberId           String?
+  state              String?
+  contactName        String?
+  phone              String?
+  email              String?
+  address            String?
+  website            String?
+  markets            String?
+  verificationStatus String?
+  currentEmployer    String?
+  previousContact    String?
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([companyId, category])
+}

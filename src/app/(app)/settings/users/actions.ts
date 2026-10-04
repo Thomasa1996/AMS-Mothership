@@ -1,0 +1,46 @@
+"use server";
+
+import bcrypt from "bcryptjs";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { db } from "@/lib/db";
+import { requireUser } from "@/lib/auth";
+import { ROLES } from "@/lib/constants";
+import { firstError, formToObject, type FormState } from "@/lib/validation";
+
+const roleIds = ROLES.map((r) => r.id) as [string, ...string[]];
+
+const NewUserSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  email: z.string().trim().toLowerCase().email("Enter a valid email"),
+  role: z.enum(roleIds),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+async function requireAdmin() {
+  const user = await requireUser();
+  if (user.role !== "ADMIN") throw new Error("Only admins can manage users");
+  return user;
+}
+
+export async function createUser(_prev: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requireAdmin();
+  const parsed = NewUserSchema.safeParse(formToObject(formData));
+  if (!parsed.success) return { error: firstError(parsed.error) };
+  const exists = await db.user.findUnique({ where: { email: parsed.data.email } });
+  if (exists) return { error: "Someone already uses that email" };
+  const { password, ...rest } = parsed.data;
+  await db.user.create({
+    data: { ...rest, passwordHash: await bcrypt.hash(password, 10), companyId: admin.companyId },
+  });
+  revalidatePath("/settings/users");
+  return { ok: true };
+}
+
+export async function changeRole(userId: string, formData: FormData) {
+  const admin = await requireAdmin();
+  const role = z.enum(roleIds).parse(formData.get("role"));
+  if (userId === admin.id && role !== "ADMIN") throw new Error("You can't remove your own admin role");
+  await db.user.updateMany({ where: { id: userId, companyId: admin.companyId }, data: { role } });
+  revalidatePath("/settings/users");
+}
