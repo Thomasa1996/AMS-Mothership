@@ -10,6 +10,7 @@ export default function SalesLayout({ children }: { children: React.ReactNode })
           { href: "/sales/vendors", label: "Vendors" },
           { href: "/sales/warehouses", label: "Warehouses" },
           { href: "/sales/project-management", label: "Project management" },
+          { href: "/sales/new-business", label: "New Business Development" },
         ]}
       />
       {children}

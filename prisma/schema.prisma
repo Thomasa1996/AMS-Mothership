@@ -37,6 +37,8 @@ model Company {
   smartsheetRegion   String  @default("us")
   // JSON array of sheet ids shown under Sales > Project management; empty or null shows every sheet.
   smartsheetSheetIds String?
+  // Apollo API key (sealed) for Sales, New Business Development.
+  apolloKey          String?
   rateCardNotes              String?
 
   users      User[]
@@ -119,9 +121,12 @@ model Contact {
   isPrimary Boolean  @default(false)
   hubspotId         String?
   hubspotModifiedAt DateTime?
+  // Set for contacts added from Apollo, so search results can show who is already in the CRM.
+  apolloId          String?
   createdAt DateTime @default(now())
 
   @@index([companyId, hubspotId])
+  @@index([companyId, apolloId])
   @@index([companyId])
 }
 
