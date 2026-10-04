@@ -3,10 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { readPdf } from "@/lib/pdf-upload";
 import type { FormState } from "@/lib/validation";
-
-// Vercel caps uploads at 4.5 MB, so keep a little under that.
-const MAX_BYTES = 4 * 1024 * 1024;
 
 async function requireAdmin() {
   const user = await requireUser();
@@ -22,12 +20,9 @@ async function checkMarket(companyId: string, market: string) {
 export async function uploadRateSheet(market: string, _prev: FormState, formData: FormData): Promise<FormState> {
   const admin = await requireAdmin();
   if (!(await checkMarket(admin.companyId, market))) return { error: "Market not found" };
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) return { error: "Choose a PDF to upload" };
-  if (file.size > MAX_BYTES) return { error: "That PDF is over 4 MB. Try saving it smaller (File, Reduce size in most PDF apps)." };
-  const data = Buffer.from(await file.arrayBuffer());
-  if (data.subarray(0, 5).toString() !== "%PDF-") return { error: "That file isn't a PDF" };
-  const fileName = file.name.toLowerCase().endsWith(".pdf") ? file.name : `${file.name}.pdf`;
+  const pdf = await readPdf(formData.get("file"));
+  if ("error" in pdf) return pdf;
+  const { data, fileName } = pdf;
   await db.rateSheet.upsert({
     where: { companyId_market: { companyId: admin.companyId, market } },
     create: { companyId: admin.companyId, market, fileName, data, size: data.length },

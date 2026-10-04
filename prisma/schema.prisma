@@ -261,7 +261,11 @@ model Quote {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
+  // Quotes a rep wrote elsewhere (Word) and uploaded as a PDF, instead of building here.
+  uploaded            Boolean   @default(false)
+
   lines QuoteLine[]
+  file  QuoteFile?
 
   @@unique([companyId, number])
   @@index([companyId, status])
@@ -351,4 +355,15 @@ model PowerBiReport {
   createdAt DateTime @default(now())
 
   @@index([companyId])
+}
+
+// The PDF behind an uploaded quote. Kept apart from Quote so quote lists don't load file data.
+model QuoteFile {
+  id         String   @id @default(cuid())
+  quoteId    String   @unique
+  quote      Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  fileName   String
+  data       Bytes
+  size       Int
+  uploadedAt DateTime @default(now())
 }

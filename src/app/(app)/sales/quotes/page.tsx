@@ -36,7 +36,12 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
       <PageHeader
         title="Quotes"
         subtitle="Every proposal the team has written, in one place"
-        actions={<Link href="/sales/quotes/new" className="btn btn-primary">New quote</Link>}
+        actions={
+          <div className="flex gap-2">
+            <Link href="/sales/quotes/upload" className="btn">Upload PDF quote</Link>
+            <Link href="/sales/quotes/new" className="btn btn-primary">New quote</Link>
+          </div>
+        }
       />
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
         {QUOTE_STATUSES.map((s) => (
@@ -83,6 +88,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
                   <td className="text-slate-500">{quote.number}</td>
                   <td>
                     <Link href={`/sales/quotes/${quote.id}`} className="link">{quote.title}</Link>
+                    {quote.uploaded && <span className="badge ml-2 bg-slate-100 text-slate-600" title="Written in Word and uploaded">PDF</span>}
                     <div className="text-xs text-slate-500">{quote.project.name}</div>
                   </td>
                   <td>

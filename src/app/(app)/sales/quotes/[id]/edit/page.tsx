@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { quoteScope } from "@/lib/access";
@@ -15,6 +15,8 @@ export default async function EditQuotePage({ params }: { params: Promise<{ id: 
     include: { lines: { orderBy: { position: "asc" } } },
   });
   if (!quote) notFound();
+  // Uploaded PDF quotes are edited on their own page (details and Replace PDF).
+  if (quote.uploaded) redirect(`/sales/quotes/${quote.id}`);
   const options = await builderOptions(user);
   return (
     <div>

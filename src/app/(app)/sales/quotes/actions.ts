@@ -81,7 +81,8 @@ export async function updateQuote(id: string, input: unknown): Promise<SaveState
   if ("error" in result) return { error: result.error };
   const { lines, ...fields } = result.data;
   try {
-    await getQuoteOrThrow(id, user);
+    const existing = await getQuoteOrThrow(id, user);
+    if (existing.uploaded) return { error: "This quote is an uploaded PDF. Replace the PDF instead." };
     await db.$transaction([
       db.quoteLine.deleteMany({ where: { quoteId: id } }),
       db.quote.update({
@@ -144,6 +145,7 @@ export async function duplicateQuote(id: string) {
   const user = await requireUser();
   const quote = await db.quote.findFirst({ where: { id, ...quoteScope(user) }, include: { lines: true } });
   if (!quote) throw new Error("Quote not found");
+  if (quote.uploaded) throw new Error("Uploaded PDF quotes can't be revised here; upload a new PDF instead");
   const { id: _id, number: _n, createdAt: _c, updatedAt: _u, sentAt: _s, decidedAt: _d, lines, ...rest } = quote;
   const copyId = await db.$transaction(async (tx) => {
     const last = await tx.quote.aggregate({ where: { companyId: user.companyId }, _max: { number: true } });
