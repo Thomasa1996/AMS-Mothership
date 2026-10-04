@@ -42,12 +42,18 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               ))}
             </div>
           )}
-          <div className="card overflow-hidden">
+          {/* Power BI pages are 16:9 with a page tab bar under them. The frame takes that shape, as wide as
+              the page allows while still fitting on screen, so the report fills it with no blank bands. */}
+          <div
+            className="card mx-auto overflow-hidden"
+            style={{ ["--w" as string]: "min(min(100vw, 80rem) - 2rem, (100vh - 12rem) * 16 / 9)", width: "var(--w)" }}
+          >
             <iframe
               key={current.id}
               title={current.name}
               src={current.embedUrl}
-              className="block h-[75vh] w-full border-0 bg-white"
+              className="block w-full border-0 bg-white"
+              style={{ height: "calc(var(--w) * 0.5625 + 2.5rem)" }}
               allowFullScreen
             />
           </div>

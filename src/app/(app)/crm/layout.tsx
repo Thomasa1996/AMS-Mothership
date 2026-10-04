@@ -6,6 +6,7 @@ export default function CrmLayout({ children }: { children: React.ReactNode }) {
       <SubNav
         items={[
           { href: "/crm/accounts", label: "Accounts" },
+          { href: "/crm/contacts", label: "Contacts" },
           { href: "/crm/projects", label: "Projects" },
           { href: "/crm/pipeline", label: "Pipeline" },
         ]}
