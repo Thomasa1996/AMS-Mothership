@@ -316,6 +316,10 @@ model Branch {
   rates  BranchRate[]
   quotes Quote[]
 
+  // When the market photo was last set; the photo itself is in BranchPhoto.
+  photoAt       DateTime?
+  photo         BranchPhoto?
+
   @@unique([companyId, name])
 }
 
@@ -366,4 +370,13 @@ model QuoteFile {
   data       Bytes
   size       Int
   uploadedAt DateTime @default(now())
+}
+
+// A photo of a market's city, shown on its warehouse page. Kept apart so branch lists stay light.
+model BranchPhoto {
+  id        String   @id @default(cuid())
+  branchId  String   @unique
+  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  type      String
+  data      Bytes
 }

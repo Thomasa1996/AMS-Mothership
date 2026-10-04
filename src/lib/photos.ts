@@ -17,3 +17,7 @@ export function decodePhoto(dataUrl: string) {
   const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
   return m ? { type: m[1]!, bytes: Buffer.from(m[2]!, "base64") } : null;
 }
+
+export function branchPhotoUrl(b: { id: string; photoAt: Date | null }) {
+  return b.photoAt ? `/branch-photo/${b.id}?v=${b.photoAt.getTime()}` : null;
+}

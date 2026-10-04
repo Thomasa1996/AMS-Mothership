@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { branchPhotoUrl } from "@/lib/photos";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { factValues } from "@/lib/branch-import";
@@ -50,9 +51,18 @@ export default async function WarehousesPage() {
                 return (
                   <tr key={b.id}>
                     <td>
-                      <Link href={`/sales/warehouses/${b.id}`} className="link font-medium">{b.name}</Link>
-                      <div className="text-xs text-slate-500">
-                        {d.warehouses.length > 1 ? `${d.warehouses.length} warehouses` : d.warehouses[0]?.cityStateZip ?? d.warehouses[0]?.address ?? "No address on file"}
+                      <div className="flex items-center gap-3">
+                        {branchPhotoUrl(b) ? (
+                          <span className="h-10 w-14 shrink-0 rounded bg-cover bg-center" style={{ backgroundImage: `url(${branchPhotoUrl(b)})` }} />
+                        ) : (
+                          <span className="h-10 w-14 shrink-0 rounded bg-slate-100" />
+                        )}
+                        <div>
+                          <Link href={`/sales/warehouses/${b.id}`} className="link font-medium">{b.name}</Link>
+                          <div className="text-xs text-slate-500">
+                            {d.warehouses.length > 1 ? `${d.warehouses.length} warehouses` : d.warehouses[0]?.cityStateZip ?? d.warehouses[0]?.address ?? "No address on file"}
+                          </div>
+                        </div>
                       </div>
                     </td>
                     <td>{gm?.name ?? <span className="text-slate-400">None listed</span>}</td>

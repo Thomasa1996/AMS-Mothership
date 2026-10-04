@@ -8,6 +8,7 @@ import { requireUser } from "@/lib/auth";
 import { parseBranchWorkbook } from "@/lib/branch-import";
 import { saveBranches } from "@/lib/branch-save";
 import { marketRateCents } from "@/lib/market-rates";
+import { decodePhoto, MAX_BACKGROUND_CHARS } from "@/lib/photos";
 import { parseDollarsToCents } from "@/lib/quote-math";
 import type { FormState } from "@/lib/validation";
 
@@ -204,6 +205,30 @@ export async function saveBranchProfile(branchId: string, input: unknown): Promi
       profile: JSON.stringify(profile),
     },
   });
+  revalidatePath("/sales/warehouses");
+  revalidatePath(`/sales/warehouses/${branch.id}`);
+  return { ok: true };
+}
+
+// Admins set a photo of the market's city (a resized JPEG from the browser), or clear it.
+export async function saveBranchPhoto(branchId: string, image: string | null): Promise<FormState> {
+  const user = await requireUser();
+  if (user.role !== "ADMIN") return { error: "Only admins can change market photos" };
+  const branch = await getBranchOrThrow(branchId, user.companyId);
+  if (image === null) {
+    await db.$transaction([
+      db.branchPhoto.deleteMany({ where: { branchId: branch.id } }),
+      db.branch.update({ where: { id: branch.id }, data: { photoAt: null } }),
+    ]);
+  } else {
+    const photo = image.length <= MAX_BACKGROUND_CHARS ? decodePhoto(image) : null;
+    if (!photo) return { error: "That image couldn't be used. Try a JPG or PNG." };
+    const data = new Uint8Array(photo.bytes);
+    await db.$transaction([
+      db.branchPhoto.upsert({ where: { branchId: branch.id }, create: { branchId: branch.id, type: photo.type, data }, update: { type: photo.type, data } }),
+      db.branch.update({ where: { id: branch.id }, data: { photoAt: new Date() } }),
+    ]);
+  }
   revalidatePath("/sales/warehouses");
   revalidatePath(`/sales/warehouses/${branch.id}`);
   return { ok: true };

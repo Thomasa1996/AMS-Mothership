@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { saveBackground } from "@/app/(app)/settings/actions";
 
 // Shrinks the picture to at most 1920px wide so a large photo uploads as a few hundred KB.
-async function shrinkJpeg(file: File, maxWidth = 1920) {
+export async function shrinkJpeg(file: File, maxWidth = 1920) {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, maxWidth / bitmap.width);
   const canvas = document.createElement("canvas");

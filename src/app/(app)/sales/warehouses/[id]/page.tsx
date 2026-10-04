@@ -8,6 +8,8 @@ import { formatCents } from "@/lib/quote-math";
 import { PageHeader } from "@/components/ui";
 import { deleteBranch, updateBranchCapacity } from "../actions";
 import { CapacityForm } from "../forms";
+import { MarketPhoto } from "./market-photo";
+import { branchPhotoUrl } from "@/lib/photos";
 
 const CAPACITY_ROLES = ["ADMIN", "PROJECT_MANAGER", "WAREHOUSE"];
 
@@ -31,6 +33,8 @@ export default async function BranchPage({ params }: { params: Promise<{ id: str
           actions={user.role === "ADMIN" ? <Link href={`/sales/warehouses/${branch.id}/edit`} className="btn btn-primary">Edit profile</Link> : undefined}
         />
       </div>
+
+      <MarketPhoto branchId={branch.id} name={branch.name} url={branchPhotoUrl(branch)} canEdit={user.role === "ADMIN"} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="card p-4">
