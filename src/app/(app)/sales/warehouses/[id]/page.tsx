@@ -28,6 +28,7 @@ export default async function BranchPage({ params }: { params: Promise<{ id: str
         <PageHeader
           title={branch.name}
           subtitle={[branch.profileDate && `Profile dated ${branch.profileDate}`, branch.approval].filter(Boolean).join(" · ") || "Warehouse profile"}
+          actions={user.role === "ADMIN" ? <Link href={`/sales/warehouses/${branch.id}/edit`} className="btn btn-primary">Edit profile</Link> : undefined}
         />
       </div>
 

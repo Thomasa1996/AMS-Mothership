@@ -160,3 +160,51 @@ export async function deleteBranch(branchId: string) {
   revalidatePath("/sales/rates");
   redirect("/sales/warehouses");
 }
+
+// Admins edit a branch's profile in place: name, addresses, contacts and the profile details.
+// Imported profiles can hold nulls where a cell was blank, so blanks and nulls are both accepted.
+const text = z
+  .string()
+  .max(500)
+  .nullish()
+  .transform((v) => (v ?? "").trim());
+const nullable = text.transform((v) => (v ? v : null));
+const ProfileInput = z.object({
+  name: z.string().trim().min(1, "The branch needs a name").max(100),
+  profileDate: nullable,
+  approval: nullable,
+  warehouses: z.array(z.object({ address: nullable, cityStateZip: nullable })).max(10),
+  contacts: z.array(z.object({ title: text, name: nullable, phone: nullable, email: nullable })).max(40),
+  profile: z
+    .array(z.object({ title: z.string().trim().min(1, "Every section needs a title").max(100), facts: z.array(z.object({ label: text, values: z.array(text).max(10) })).max(100) }))
+    .max(20),
+});
+
+export async function saveBranchProfile(branchId: string, input: unknown): Promise<FormState> {
+  const user = await requireUser();
+  if (user.role !== "ADMIN") return { error: "Only admins can edit warehouse profiles" };
+  const branch = await getBranchOrThrow(branchId, user.companyId);
+  const parsed = ProfileInput.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the profile and try again" };
+  const d = parsed.data;
+  if (d.name !== branch.name && (await db.branch.findFirst({ where: { companyId: user.companyId, name: d.name }, select: { id: true } }))) {
+    return { error: `There's already a branch called ${d.name}` };
+  }
+  const warehouses = d.warehouses.filter((w) => w.address || w.cityStateZip);
+  const contacts = d.contacts.filter((c) => c.name || c.phone || c.email).map((c) => ({ ...c, title: c.title || "Contact" }));
+  const profile = d.profile.map((s) => ({ title: s.title, facts: s.facts.filter((f) => f.label) }));
+  await db.branch.update({
+    where: { id: branch.id },
+    data: {
+      name: d.name,
+      profileDate: d.profileDate,
+      approval: d.approval,
+      warehouses: JSON.stringify(warehouses),
+      contacts: JSON.stringify(contacts),
+      profile: JSON.stringify(profile),
+    },
+  });
+  revalidatePath("/sales/warehouses");
+  revalidatePath(`/sales/warehouses/${branch.id}`);
+  return { ok: true };
+}
