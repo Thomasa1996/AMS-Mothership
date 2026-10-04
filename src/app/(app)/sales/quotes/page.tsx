@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { limitedToOwn, quoteScope } from "@/lib/access";
 import { formatDate } from "@/lib/format";
 import { QUOTE_STATUSES, formatCents } from "@/lib/quote-math";
 import { EmptyState, PageHeader } from "@/components/ui";
@@ -13,7 +14,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
   const [quotes, totals] = await Promise.all([
     db.quote.findMany({
       where: {
-        companyId: user.companyId,
+        ...quoteScope(user),
         ...(status ? { status } : {}),
         ...(mine ? { createdById: user.id } : {}),
         ...(q
@@ -26,7 +27,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
       },
       orderBy: { number: "desc" },
     }),
-    db.quote.groupBy({ by: ["status"], where: { companyId: user.companyId }, _sum: { totalCents: true }, _count: true }),
+    db.quote.groupBy({ by: ["status"], where: quoteScope(user), _sum: { totalCents: true }, _count: true }),
   ]);
   const byStatus = Object.fromEntries(totals.map((t) => [t.status, t]));
 
@@ -53,9 +54,11 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
       <form className="mb-4 flex flex-wrap items-center gap-2">
         {status && <input type="hidden" name="status" value={status} />}
         <input className="input max-w-xs" name="q" defaultValue={q} placeholder="Search quotes, projects, accounts" />
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="mine" value="1" defaultChecked={!!mine} /> Only mine
-        </label>
+        {!limitedToOwn(user) && (
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="mine" value="1" defaultChecked={!!mine} /> Only mine
+          </label>
+        )}
         <button className="btn">Filter</button>
       </form>
       <div className="card overflow-x-auto">

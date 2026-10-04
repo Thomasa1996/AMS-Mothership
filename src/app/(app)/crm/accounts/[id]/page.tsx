@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { accountScope, ownerChoices } from "@/lib/access";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Avatar, EmptyState, Field, PageHeader, StageBadge } from "@/components/ui";
 import { addActivity, createContact, deleteAccount, deleteContact, updateAccount } from "../../actions";
@@ -12,7 +13,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
   const user = await requireUser();
   const { id } = await params;
   const account = await db.account.findFirst({
-    where: { id, companyId: user.companyId },
+    where: { id, ...accountScope(user) },
     include: {
       owner: true,
       contacts: { orderBy: [{ isPrimary: "desc" }, { name: "asc" }] },
@@ -25,7 +26,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
     },
   });
   if (!account) notFound();
-  const users = await db.user.findMany({ where: { companyId: user.companyId }, select: { id: true, name: true }, orderBy: { name: "asc" } });
+  const users = await db.user.findMany({ where: ownerChoices(user), select: { id: true, name: true }, orderBy: { name: "asc" } });
 
   return (
     <div>

@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { limitedToOwn, projectScope } from "@/lib/access";
 import { formatCurrency } from "@/lib/format";
 import { PageHeader } from "@/components/ui";
 import { PipelineBoard } from "./board";
@@ -8,7 +9,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
   const user = await requireUser();
   const { mine } = await searchParams;
   const projects = await db.project.findMany({
-    where: { companyId: user.companyId, ...(mine ? { account: { ownerId: user.id } } : {}) },
+    where: { ...projectScope(user), ...(mine ? { account: { ownerId: user.id } } : {}) },
     include: { account: { select: { name: true } }, manager: { select: { name: true } } },
     orderBy: [{ moveDate: "asc" }],
   });
@@ -21,12 +22,14 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
         title="Pipeline"
         subtitle={`${open.length} open projects · ${formatCurrency(openValue)} open value · drag a card to change its stage`}
         actions={
-          <form>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="mine" value="1" defaultChecked={!!mine} /> Only my accounts
-              <button className="btn">Apply</button>
-            </label>
-          </form>
+          !limitedToOwn(user) && (
+            <form>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="mine" value="1" defaultChecked={!!mine} /> Only my accounts
+                <button className="btn">Apply</button>
+              </label>
+            </form>
+          )
         }
       />
       <PipelineBoard

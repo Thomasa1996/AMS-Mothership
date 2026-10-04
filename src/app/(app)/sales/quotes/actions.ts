@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { stageLabel } from "@/lib/constants";
+import { projectScope, quoteScope } from "@/lib/access";
 import { firstError } from "@/lib/validation";
 import { QUOTE_STATUS_IDS, QuoteInput, formatCents, lineAmountCents, quoteStatusLabel, quoteTotalCents } from "@/lib/quote-math";
 import { z } from "zod";
@@ -13,8 +14,8 @@ export type SaveState = { error?: string };
 
 type User = Awaited<ReturnType<typeof requireUser>>;
 
-async function getQuoteOrThrow(id: string, companyId: string) {
-  const quote = await db.quote.findFirst({ where: { id, companyId }, include: { project: true } });
+async function getQuoteOrThrow(id: string, user: User) {
+  const quote = await db.quote.findFirst({ where: { id, ...quoteScope(user) }, include: { project: true } });
   if (!quote) throw new Error("Quote not found");
   return quote;
 }
@@ -26,7 +27,7 @@ function lineRows(lines: z.output<typeof QuoteInput>["lines"]) {
 async function parseInput(input: unknown, user: User) {
   const parsed = QuoteInput.safeParse(input);
   if (!parsed.success) return { error: firstError(parsed.error) } as const;
-  const project = await db.project.findFirst({ where: { id: parsed.data.projectId, companyId: user.companyId } });
+  const project = await db.project.findFirst({ where: { id: parsed.data.projectId, ...projectScope(user) } });
   if (!project) return { error: "Project not found" } as const;
   return { data: parsed.data, project } as const;
 }
@@ -76,7 +77,7 @@ export async function updateQuote(id: string, input: unknown): Promise<SaveState
   if ("error" in result) return { error: result.error };
   const { lines, ...fields } = result.data;
   try {
-    await getQuoteOrThrow(id, user.companyId);
+    await getQuoteOrThrow(id, user);
     await db.$transaction([
       db.quoteLine.deleteMany({ where: { quoteId: id } }),
       db.quote.update({
@@ -96,7 +97,7 @@ export async function updateQuote(id: string, input: unknown): Promise<SaveState
 export async function setQuoteStatus(id: string, status: string) {
   const user = await requireUser();
   const next = z.enum(QUOTE_STATUS_IDS).parse(status);
-  const quote = await getQuoteOrThrow(id, user.companyId);
+  const quote = await getQuoteOrThrow(id, user);
   if (quote.status === next) return;
 
   const now = new Date();
@@ -137,7 +138,7 @@ export async function setQuoteStatus(id: string, status: string) {
 
 export async function duplicateQuote(id: string) {
   const user = await requireUser();
-  const quote = await db.quote.findFirst({ where: { id, companyId: user.companyId }, include: { lines: true } });
+  const quote = await db.quote.findFirst({ where: { id, ...quoteScope(user) }, include: { lines: true } });
   if (!quote) throw new Error("Quote not found");
   const { id: _id, number: _n, createdAt: _c, updatedAt: _u, sentAt: _s, decidedAt: _d, lines, ...rest } = quote;
   const copyId = await db.$transaction(async (tx) => {
@@ -160,7 +161,7 @@ export async function duplicateQuote(id: string) {
 
 export async function deleteQuote(id: string) {
   const user = await requireUser();
-  await getQuoteOrThrow(id, user.companyId);
+  await getQuoteOrThrow(id, user);
   await db.quote.delete({ where: { id } });
   revalidatePath("/sales/quotes");
   redirect("/sales/quotes");

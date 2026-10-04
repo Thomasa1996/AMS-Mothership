@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { quoteScope } from "@/lib/access";
 import { formatDateTime } from "@/lib/format";
 import { formatCents } from "@/lib/quote-math";
 import { ConfirmButton } from "@/app/(app)/crm/forms";
@@ -14,7 +15,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
   const user = await requireUser();
   const { id } = await params;
   const quote = await db.quote.findFirst({
-    where: { id, companyId: user.companyId },
+    where: { id, ...quoteScope(user) },
     include: {
       lines: { orderBy: { position: "asc" } },
       company: true,

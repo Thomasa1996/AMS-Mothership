@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { accountScope } from "@/lib/access";
 import { PageHeader } from "@/components/ui";
 import { createProject } from "../../actions";
 import { ProjectForm } from "../../forms";
@@ -8,7 +9,7 @@ export default async function NewProjectPage({ searchParams }: { searchParams: P
   const user = await requireUser();
   const { accountId } = await searchParams;
   const [accounts, users] = await Promise.all([
-    db.account.findMany({ where: { companyId: user.companyId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    db.account.findMany({ where: accountScope(user), select: { id: true, name: true }, orderBy: { name: "asc" } }),
     db.user.findMany({ where: { companyId: user.companyId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
   return (

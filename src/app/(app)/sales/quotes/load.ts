@@ -1,11 +1,15 @@
 import { db } from "@/lib/db";
 import { templateFor } from "@/lib/quote-template";
+import { projectScope } from "@/lib/access";
+
+type Viewer = { id: string; companyId: string; role: string };
 import type { ProjectOption, QuoteDraft, RateOption } from "./builder";
 
-export async function builderOptions(companyId: string): Promise<{ projects: ProjectOption[]; rates: RateOption[] }> {
+export async function builderOptions(user: Viewer): Promise<{ projects: ProjectOption[]; rates: RateOption[] }> {
+  const { companyId } = user;
   const [projects, rates] = await Promise.all([
     db.project.findMany({
-      where: { companyId },
+      where: projectScope(user),
       include: { account: { include: { contacts: { orderBy: [{ isPrimary: "desc" }, { name: "asc" }], take: 1 } } } },
       orderBy: [{ account: { name: "asc" } }, { name: "asc" }],
     }),
@@ -25,12 +29,12 @@ export async function builderOptions(companyId: string): Promise<{ projects: Pro
   };
 }
 
-export async function newQuoteDraft(companyId: string, projectId?: string): Promise<QuoteDraft> {
-  const company = await db.company.findUniqueOrThrow({ where: { id: companyId } });
+export async function newQuoteDraft(user: Viewer, projectId?: string): Promise<QuoteDraft> {
+  const company = await db.company.findUniqueOrThrow({ where: { id: user.companyId } });
   const t = templateFor(company);
   const project = projectId
     ? await db.project.findFirst({
-        where: { id: projectId, companyId },
+        where: { id: projectId, ...projectScope(user) },
         include: { account: { include: { contacts: { orderBy: [{ isPrimary: "desc" }], take: 1 } } } },
       })
     : null;

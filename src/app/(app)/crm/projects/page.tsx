@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { projectScope } from "@/lib/access";
 import { STAGES } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { EmptyState, PageHeader, StageBadge } from "@/components/ui";
@@ -10,7 +11,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
   const { q = "", stage = "" } = await searchParams;
   const projects = await db.project.findMany({
     where: {
-      companyId: user.companyId,
+      ...projectScope(user),
       ...(stage ? { stage } : {}),
       ...(q ? { OR: [{ name: { contains: q } }, { account: { name: { contains: q } } }] } : {}),
     },

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { stageLabel } from "@/lib/constants";
+import { accountScope, limitedToOwn, projectScope } from "@/lib/access";
 import {
   AccountSchema,
   ActivitySchema,
@@ -16,7 +17,10 @@ import {
   type FormState,
 } from "@/lib/validation";
 
-// Every action loads the signed-in user and scopes reads and writes to their company.
+// Every action loads the signed-in user and scopes reads and writes to their company,
+// and for salespeople to the accounts they own (see lib/access.ts).
+
+type User = Awaited<ReturnType<typeof requireUser>>;
 
 async function assertUserInCompany(userId: string | null, companyId: string) {
   if (!userId) return;
@@ -24,16 +28,25 @@ async function assertUserInCompany(userId: string | null, companyId: string) {
   if (!found) throw new Error("That person isn't on your team");
 }
 
-async function getAccountOrThrow(accountId: string, companyId: string) {
-  const account = await db.account.findFirst({ where: { id: accountId, companyId } });
+async function getAccountOrThrow(accountId: string, user: User) {
+  const account = await db.account.findFirst({ where: { id: accountId, ...accountScope(user) } });
   if (!account) throw new Error("Account not found");
   return account;
 }
 
-async function getProjectOrThrow(projectId: string, companyId: string) {
-  const project = await db.project.findFirst({ where: { id: projectId, companyId } });
+async function getProjectOrThrow(projectId: string, user: User) {
+  const project = await db.project.findFirst({ where: { id: projectId, ...projectScope(user) } });
   if (!project) throw new Error("Project not found");
   return project;
+}
+
+// Salespeople can't hand accounts to someone else; only admins reassign owners.
+function ownerFor(requested: string | null | undefined, user: User) {
+  if (limitedToOwn(user)) {
+    if (requested && requested !== user.id) throw new Error("Only an admin can give an account to someone else");
+    return user.id;
+  }
+  return requested ?? user.id;
 }
 
 function errorState(e: unknown): FormState {
@@ -50,7 +63,7 @@ export async function createAccount(_prev: FormState, formData: FormData): Promi
   try {
     await assertUserInCompany(parsed.data.ownerId, user.companyId);
     const account = await db.account.create({
-      data: { ...parsed.data, ownerId: parsed.data.ownerId ?? user.id, companyId: user.companyId },
+      data: { ...parsed.data, ownerId: ownerFor(parsed.data.ownerId, user), companyId: user.companyId },
     });
     id = account.id;
   } catch (e) {
@@ -65,9 +78,9 @@ export async function updateAccount(accountId: string, _prev: FormState, formDat
   const parsed = AccountSchema.safeParse(formToObject(formData));
   if (!parsed.success) return { error: firstError(parsed.error) };
   try {
-    await getAccountOrThrow(accountId, user.companyId);
+    await getAccountOrThrow(accountId, user);
     await assertUserInCompany(parsed.data.ownerId, user.companyId);
-    await db.account.update({ where: { id: accountId }, data: parsed.data });
+    await db.account.update({ where: { id: accountId }, data: { ...parsed.data, ownerId: ownerFor(parsed.data.ownerId, user) } });
   } catch (e) {
     return errorState(e);
   }
@@ -77,7 +90,7 @@ export async function updateAccount(accountId: string, _prev: FormState, formDat
 
 export async function deleteAccount(accountId: string) {
   const user = await requireUser();
-  await getAccountOrThrow(accountId, user.companyId);
+  await getAccountOrThrow(accountId, user);
   await db.account.delete({ where: { id: accountId } });
   revalidatePath("/crm");
   redirect("/crm/accounts");
@@ -90,7 +103,7 @@ export async function createContact(accountId: string, _prev: FormState, formDat
   const parsed = ContactSchema.safeParse(formToObject(formData));
   if (!parsed.success) return { error: firstError(parsed.error) };
   try {
-    await getAccountOrThrow(accountId, user.companyId);
+    await getAccountOrThrow(accountId, user);
     await db.$transaction(async (tx) => {
       if (parsed.data.isPrimary) {
         await tx.contact.updateMany({ where: { accountId }, data: { isPrimary: false } });
@@ -106,7 +119,7 @@ export async function createContact(accountId: string, _prev: FormState, formDat
 
 export async function deleteContact(contactId: string) {
   const user = await requireUser();
-  const contact = await db.contact.findFirst({ where: { id: contactId, companyId: user.companyId } });
+  const contact = await db.contact.findFirst({ where: { id: contactId, companyId: user.companyId, account: accountScope(user) } });
   if (!contact) throw new Error("Contact not found");
   await db.contact.delete({ where: { id: contactId } });
   revalidatePath(`/crm/accounts/${contact.accountId}`);
@@ -120,7 +133,7 @@ export async function createProject(_prev: FormState, formData: FormData): Promi
   if (!parsed.success) return { error: firstError(parsed.error) };
   let id: string;
   try {
-    await getAccountOrThrow(parsed.data.accountId, user.companyId);
+    await getAccountOrThrow(parsed.data.accountId, user);
     await assertUserInCompany(parsed.data.managerId, user.companyId);
     const project = await db.project.create({ data: { ...parsed.data, companyId: user.companyId } });
     await db.activity.create({
@@ -146,8 +159,8 @@ export async function updateProject(projectId: string, _prev: FormState, formDat
   const parsed = ProjectSchema.safeParse(formToObject(formData));
   if (!parsed.success) return { error: firstError(parsed.error) };
   try {
-    const existing = await getProjectOrThrow(projectId, user.companyId);
-    await getAccountOrThrow(parsed.data.accountId, user.companyId);
+    const existing = await getProjectOrThrow(projectId, user);
+    await getAccountOrThrow(parsed.data.accountId, user);
     await assertUserInCompany(parsed.data.managerId, user.companyId);
     await db.project.update({ where: { id: projectId }, data: parsed.data });
     if (existing.stage !== parsed.data.stage) {
@@ -163,7 +176,7 @@ export async function updateProject(projectId: string, _prev: FormState, formDat
 export async function setProjectStage(projectId: string, stage: string) {
   const user = await requireUser();
   const nextStage = StageSchema.parse(stage);
-  const existing = await getProjectOrThrow(projectId, user.companyId);
+  const existing = await getProjectOrThrow(projectId, user);
   if (existing.stage === nextStage) return;
   await db.project.update({ where: { id: projectId }, data: { stage: nextStage } });
   await logStageChange(user, existing.accountId, projectId, existing.stage, nextStage);
@@ -172,7 +185,7 @@ export async function setProjectStage(projectId: string, stage: string) {
 
 export async function deleteProject(projectId: string) {
   const user = await requireUser();
-  const project = await getProjectOrThrow(projectId, user.companyId);
+  const project = await getProjectOrThrow(projectId, user);
   await db.project.delete({ where: { id: projectId } });
   revalidatePath("/crm");
   redirect(`/crm/accounts/${project.accountId}`);
@@ -208,9 +221,9 @@ export async function addActivity(
   const parsed = ActivitySchema.safeParse(formToObject(formData));
   if (!parsed.success) return { error: firstError(parsed.error) };
   try {
-    await getAccountOrThrow(target.accountId, user.companyId);
+    await getAccountOrThrow(target.accountId, user);
     if (target.projectId) {
-      const project = await getProjectOrThrow(target.projectId, user.companyId);
+      const project = await getProjectOrThrow(target.projectId, user);
       if (project.accountId !== target.accountId) throw new Error("Project not found");
     }
     await db.activity.create({

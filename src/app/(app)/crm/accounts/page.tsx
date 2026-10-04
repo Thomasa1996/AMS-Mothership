@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { accountScope, limitedToOwn } from "@/lib/access";
 import { formatCurrency } from "@/lib/format";
 import { Avatar, EmptyState, PageHeader } from "@/components/ui";
 
@@ -13,7 +14,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
   const [accounts, users] = await Promise.all([
     db.account.findMany({
       where: {
-        companyId: user.companyId,
+        ...accountScope(user),
         ...(q ? { name: { contains: q } } : {}),
         ...(owner === "me" ? { ownerId: user.id } : owner ? { ownerId: owner } : {}),
       },
@@ -37,13 +38,15 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
       />
       <form className="mb-4 flex flex-wrap gap-2">
         <input className="input max-w-xs" name="q" defaultValue={q} placeholder="Search accounts" />
-        <select className="input w-auto" name="owner" defaultValue={owner}>
-          <option value="">All owners</option>
-          <option value="me">My accounts</option>
-          {users.map((u) => (
-            <option key={u.id} value={u.id}>{u.name}</option>
-          ))}
-        </select>
+        {!limitedToOwn(user) && (
+          <select className="input w-auto" name="owner" defaultValue={owner}>
+            <option value="">All owners</option>
+            <option value="me">My accounts</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>{u.name}</option>
+            ))}
+          </select>
+        )}
         <button className="btn">Filter</button>
       </form>
       <div className="card overflow-x-auto">
