@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { ConfirmButton } from "@/app/(app)/crm/forms";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { branchDetails, factorLabel, rateCardFor } from "@/lib/branches";
 import { formatCents } from "@/lib/quote-math";
 import { PageHeader } from "@/components/ui";
-import { updateBranchCapacity } from "../actions";
+import { deleteBranch, updateBranchCapacity } from "../actions";
 import { CapacityForm } from "../forms";
 
 const CAPACITY_ROLES = ["ADMIN", "PROJECT_MANAGER", "WAREHOUSE"];
@@ -146,6 +147,15 @@ export default async function BranchPage({ params }: { params: Promise<{ id: str
           </section>
         ))}
       </div>
+      {user.role === "ADMIN" && (
+        <div className="pt-2">
+          <ConfirmButton
+            action={deleteBranch.bind(null, branch.id)}
+            label={`Remove ${branch.name}`}
+            confirmText={`Remove ${branch.name}? Its profile, market rates and rate sheet PDF are deleted. Quotes already priced from it keep their prices. If you import the profile workbook again, delete this sheet from it first.`}
+          />
+        </div>
+      )}
     </div>
   );
 }

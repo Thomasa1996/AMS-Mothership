@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
@@ -143,4 +144,19 @@ export async function repriceMarket(branchId: string, _prev: FormState, formData
   revalidatePath("/sales/warehouses");
   revalidatePath("/sales/rates");
   return { ok: true };
+}
+
+// Removes a market the company no longer runs (sold or closed), with its market rates and rate
+// sheet PDF. Quotes priced from it keep their prices and fall back to showing standard rates.
+export async function deleteBranch(branchId: string) {
+  const user = await requireUser();
+  if (user.role !== "ADMIN") throw new Error("Only admins can remove a market");
+  const branch = await getBranchOrThrow(branchId, user.companyId);
+  await db.$transaction([
+    db.rateSheet.deleteMany({ where: { companyId: user.companyId, market: branch.id } }),
+    db.branch.delete({ where: { id: branch.id } }),
+  ]);
+  revalidatePath("/sales/warehouses");
+  revalidatePath("/sales/rates");
+  redirect("/sales/warehouses");
 }
