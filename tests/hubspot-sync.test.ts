@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { companyToAccount, contactFields, dealToProject, industryLabel, mapDealStage } from "@/lib/hubspot-sync";
+import { NO_COMPANY_ACCOUNT, companyToAccount, contactFields, dealToProject, fallbackAccountName, industryLabel, mapDealStage, nameKey } from "@/lib/hubspot-sync";
 
 describe("HubSpot mapping", () => {
   it("maps the default pipeline stages", () => {
@@ -42,5 +42,17 @@ describe("HubSpot mapping", () => {
   it("rounds deal amounts to whole dollars and handles blanks", () => {
     expect(dealToProject({ id: "1", properties: { dealname: "Move", dealstage: "closedwon", amount: "4940.6" } }, []).estimatedValue).toBe(4941);
     expect(dealToProject({ id: "2", properties: { dealname: "Move", dealstage: "closedwon", amount: "" } }, []).estimatedValue).toBeNull();
+  });
+});
+
+describe("contacts with no linked company", () => {
+  const contact = (company: string | null) => ({ id: "1", properties: { company } });
+  it("go under the company name typed on the contact", () => {
+    expect(fallbackAccountName(contact("  Move   Logistix "))).toBe("Move Logistix");
+    expect(nameKey("Move Logistix")).toBe(nameKey(" move  LOGISTIX"));
+  });
+  it("go under one shared account when no company name is typed", () => {
+    expect(fallbackAccountName(contact(null))).toBe(NO_COMPANY_ACCOUNT);
+    expect(fallbackAccountName(contact("  "))).toBe(NO_COMPANY_ACCOUNT);
   });
 });

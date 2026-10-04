@@ -3,6 +3,8 @@ import { listAll, listDealStages, listOwners, type HubSpotRecord, type HubSpotSt
 
 // One-way sync from HubSpot into Mothership, used while the team moves off HubSpot.
 // - Companies become accounts, contacts go under their company, deals become projects.
+// - A contact with no company linked in HubSpot goes under the account named in its Company name
+//   field (created if needed), or under one "No company in HubSpot" account.
 // - A record is updated only when HubSpot changed it since the last sync, so edits made in
 //   Mothership (a project moved to In progress, say) stick until someone changes it in HubSpot.
 // - Nothing is ever deleted in Mothership.
@@ -10,7 +12,7 @@ import { listAll, listDealStages, listOwners, type HubSpotRecord, type HubSpotSt
 //   aren't a unique index.
 
 export const COMPANY_PROPS = ["name", "domain", "website", "phone", "industry", "address", "city", "state", "zip", "hubspot_owner_id", "hs_lastmodifieddate"];
-export const CONTACT_PROPS = ["firstname", "lastname", "email", "phone", "mobilephone", "jobtitle", "lastmodifieddate"];
+export const CONTACT_PROPS = ["firstname", "lastname", "email", "phone", "mobilephone", "jobtitle", "company", "hubspot_owner_id", "lastmodifieddate"];
 export const DEAL_PROPS = ["dealname", "dealstage", "amount", "hubspot_owner_id", "hs_lastmodifieddate", "description"];
 
 // HubSpot's default sales pipeline. Other pipelines fall back to each stage's win probability.
@@ -86,11 +88,21 @@ function modifiedAt(r: HubSpotRecord, prop: string) {
 
 const firstCompany = (r: HubSpotRecord) => r.associations?.companies?.results[0]?.id ?? null;
 
+export const NO_COMPANY_ACCOUNT = "No company in HubSpot";
+
+// Account names compare ignoring case and spacing ("Move Logistix " matches "move logistix").
+export const nameKey = (name: string) => name.trim().replace(/\s+/g, " ").toLowerCase();
+
+// The account a contact with no linked HubSpot company belongs under.
+export function fallbackAccountName(r: HubSpotRecord) {
+  return clean(r.properties.company)?.replace(/\s+/g, " ") ?? NO_COMPANY_ACCOUNT;
+}
+
 const isNewer = (incoming: Date, stored: Date | null) => !stored || incoming.getTime() > stored.getTime();
 
 export type SyncResult = {
   accounts: { created: number; updated: number };
-  contacts: { created: number; updated: number; skipped: number };
+  contacts: { created: number; updated: number };
   projects: { created: number; updated: number; skipped: number };
   unmatchedOwners: string[];
 };
@@ -102,8 +114,7 @@ export function describeSync(r: SyncResult) {
     `${r.projects.created} new and ${r.projects.updated} updated projects`,
   ];
   let text = parts.join("; ") + ".";
-  const skipped = r.contacts.skipped + r.projects.skipped;
-  if (skipped) text += ` ${r.contacts.skipped} contacts and ${r.projects.skipped} deals have no company in HubSpot, so they were skipped.`;
+  if (r.projects.skipped) text += ` ${r.projects.skipped} deals have no company in HubSpot, so they were skipped.`;
   if (r.unmatchedOwners.length) {
     text += ` No teammate has the email of these HubSpot owners, so their accounts have no owner yet: ${r.unmatchedOwners.join(", ")}.`;
   }
@@ -170,14 +181,34 @@ export async function syncHubSpot(db: PrismaClient, companyId: string, token: st
   const contactByHs = new Map(existingContacts.map((c) => [c.hubspotId!, c]));
   const contactCreates = [];
   const contactUpdates = [];
-  let contactsSkipped = 0;
+  // Most contacts in HubSpot have only a Company name typed in, not a linked company. Those go under
+  // the account with that name, created here (owned by the contact's owner) when none exists yet.
+  const loose = contacts.filter((c) => {
+    const hs = firstCompany(c);
+    return !hs || !accountIds.has(hs);
+  });
+  const accountByName = new Map<string, string>();
+  for (const a of await db.account.findMany({ where: { companyId }, select: { id: true, name: true }, orderBy: { createdAt: "asc" } })) {
+    if (!accountByName.has(nameKey(a.name))) accountByName.set(nameKey(a.name), a.id);
+  }
+  const fallbackCreates = new Map<string, { companyId: string; name: string; source: string; ownerId: string | null; hubspotOwnerName: string | null }>();
+  for (const c of loose) {
+    const name = fallbackAccountName(c);
+    const key = nameKey(name);
+    if (accountByName.has(key) || fallbackCreates.has(key)) continue;
+    const owner = name !== NO_COMPANY_ACCOUNT && c.properties.hubspot_owner_id ? ownerInfo.get(c.properties.hubspot_owner_id) : undefined;
+    if (owner && !owner.userId) unmatched.add(owner.name);
+    fallbackCreates.set(key, { companyId, name, source: "HUBSPOT", ownerId: owner?.userId ?? null, hubspotOwnerName: owner && !owner.userId ? owner.name : null });
+  }
+  for (const batch of chunk([...fallbackCreates.values()], 500)) await db.account.createMany({ data: batch });
+  if (fallbackCreates.size) {
+    const made = await db.account.findMany({ where: { companyId, hubspotId: null, name: { in: [...fallbackCreates.values()].map((a) => a.name) } }, select: { id: true, name: true } });
+    for (const a of made) if (!accountByName.has(nameKey(a.name))) accountByName.set(nameKey(a.name), a.id);
+  }
+
   for (const c of contacts) {
     const companyHs = firstCompany(c);
-    const accountId = companyHs ? accountIds.get(companyHs) : undefined;
-    if (!accountId) {
-      contactsSkipped++;
-      continue;
-    }
+    const accountId = (companyHs ? accountIds.get(companyHs) : undefined) ?? accountByName.get(nameKey(fallbackAccountName(c)))!;
     const data = { ...contactFields(c), accountId, hubspotModifiedAt: modifiedAt(c, "lastmodifieddate") };
     const existing = contactByHs.get(c.id);
     if (!existing) contactCreates.push({ ...data, companyId, hubspotId: c.id });
@@ -229,8 +260,8 @@ export async function syncHubSpot(db: PrismaClient, companyId: string, token: st
   if (activities.length) await db.activity.createMany({ data: activities });
 
   return {
-    accounts: { created: accountCreates.length, updated: accountUpdates.length },
-    contacts: { created: contactCreates.length, updated: contactUpdates.length, skipped: contactsSkipped },
+    accounts: { created: accountCreates.length + fallbackCreates.size, updated: accountUpdates.length },
+    contacts: { created: contactCreates.length, updated: contactUpdates.length },
     projects: { created: projectsCreated, updated: projectsUpdated, skipped: projectsSkipped },
     unmatchedOwners: [...unmatched].sort(),
   };
