@@ -1,15 +1,23 @@
 import { SubNav } from "@/components/main-nav";
+import { requireUser } from "@/lib/auth";
 
-export default function SettingsLayout({ children }: { children: React.ReactNode }) {
+// Only admins see Team, Rate card, Quote template and HubSpot; each page also redirects anyone else.
+export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
+  const user = await requireUser();
+  const admin = user.role === "ADMIN";
   return (
     <div className="space-y-6">
       <SubNav
         items={[
           { href: "/settings/profile", label: "My profile" },
-          { href: "/settings/users", label: "Team" },
-          { href: "/settings/rates", label: "Rate card" },
-          { href: "/settings/quote-template", label: "Quote template" },
-          { href: "/settings/hubspot", label: "HubSpot" },
+          ...(admin
+            ? [
+                { href: "/settings/users", label: "Team" },
+                { href: "/settings/rates", label: "Rate card" },
+                { href: "/settings/quote-template", label: "Quote template" },
+                { href: "/settings/hubspot", label: "HubSpot" },
+              ]
+            : []),
         ]}
       />
       {children}
