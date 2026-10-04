@@ -12,16 +12,20 @@ export class HubSpotError extends Error {
   }
 }
 
-async function request<T>(token: string, path: string, attempt = 0): Promise<T> {
+// scope names the permission a 403 on this call means is missing, so the error can say which one.
+async function request<T>(token: string, path: string, scope: string, attempt = 0): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
   if (res.status === 429 && attempt < 3) {
     await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
-    return request(token, path, attempt + 1);
+    return request(token, path, scope, attempt + 1);
   }
   if (!res.ok) {
     if (res.status === 401) throw new HubSpotError("HubSpot didn't accept the key. Check it was copied in full and hasn't been rotated.", 401);
     if (res.status === 403) {
-      throw new HubSpotError("The HubSpot key is missing a permission. It needs read access to companies, contacts, deals and owners.", 403);
+      throw new HubSpotError(
+        `The HubSpot key is missing the ${scope} permission. In HubSpot, open the Mothership app, tick ${scope} on its Scopes tab, save, then sync again.`,
+        403,
+      );
     }
     throw new HubSpotError(`HubSpot returned an error (${res.status}). Try again in a few minutes.`, res.status);
   }
@@ -45,7 +49,7 @@ export async function listAll(token: string, objectType: "companies" | "contacts
     const params = new URLSearchParams({ limit: "100", properties: properties.join(","), archived: "false" });
     if (associations) params.set("associations", associations);
     if (after) params.set("after", after);
-    const page = await request<Page>(token, `/crm/v3/objects/${objectType}?${params}`);
+    const page = await request<Page>(token, `/crm/v3/objects/${objectType}?${params}`, `crm.objects.${objectType}.read`);
     all.push(...page.results);
     after = page.paging?.next?.after;
   } while (after);
@@ -60,7 +64,7 @@ export async function listOwners(token: string) {
   do {
     const params = new URLSearchParams({ limit: "100" });
     if (after) params.set("after", after);
-    const page = await request<{ results: HubSpotOwner[]; paging?: { next?: { after: string } } }>(token, `/crm/v3/owners?${params}`);
+    const page = await request<{ results: HubSpotOwner[]; paging?: { next?: { after: string } } }>(token, `/crm/v3/owners?${params}`, "crm.objects.owners.read");
     all.push(...page.results);
     after = page.paging?.next?.after;
   } while (after);
@@ -69,7 +73,14 @@ export async function listOwners(token: string) {
 
 export type HubSpotStage = { id: string; label: string; metadata?: { probability?: string; isClosed?: string } };
 
+// Only used to map custom deal stages; if the key can't read pipelines, HubSpot's standard stage
+// names are still mapped and anything else starts as a lead.
 export async function listDealStages(token: string) {
-  const res = await request<{ results: { id: string; stages: HubSpotStage[] }[] }>(token, "/crm/v3/pipelines/deals");
-  return res.results.flatMap((p) => p.stages);
+  try {
+    const res = await request<{ results: { id: string; stages: HubSpotStage[] }[] }>(token, "/crm/v3/pipelines/deals", "crm.objects.deals.read");
+    return res.results.flatMap((p) => p.stages);
+  } catch (e) {
+    if (e instanceof HubSpotError && e.status === 403) return [];
+    throw e;
+  }
 }
