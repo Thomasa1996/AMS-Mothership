@@ -5,7 +5,7 @@ import { BranchImportForm } from "../forms";
 
 export default async function ImportBranchesPage() {
   const user = await requireUser();
-  if (user.role !== "ADMIN") redirect("/warehouse");
+  if (user.role !== "ADMIN") redirect("/sales/warehouses");
   return (
     <div className="max-w-2xl">
       <PageHeader title="Import branch profiles" subtitle="Upload the branch profile workbook. Each branch sheet becomes a warehouse page." />

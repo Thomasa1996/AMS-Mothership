@@ -13,7 +13,7 @@ const pct = (factor: number) => Math.round((factor - 1) * 1000) / 10;
 export default async function EditMarketRatesPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
   const { id } = await params;
-  if (user.role !== "ADMIN") redirect(`/warehouse/${id}`);
+  if (user.role !== "ADMIN") redirect(`/sales/warehouses/${id}`);
   const branch = await db.branch.findFirst({ where: { id, companyId: user.companyId } });
   if (!branch) notFound();
   const rates = await rateCardFor(user.companyId, branch.id);
@@ -21,7 +21,7 @@ export default async function EditMarketRatesPage({ params }: { params: Promise<
   return (
     <div className="space-y-6">
       <div>
-        <Link href={`/warehouse/${branch.id}`} className="text-sm text-slate-500 hover:text-slate-700">&larr; {branch.name}</Link>
+        <Link href={`/sales/warehouses/${branch.id}`} className="text-sm text-slate-500 hover:text-slate-700">&larr; {branch.name}</Link>
         <PageHeader title={`${branch.name} market rates`} subtitle="Quotes written for this market use these prices." />
       </div>
       <section className="card space-y-3 p-4">

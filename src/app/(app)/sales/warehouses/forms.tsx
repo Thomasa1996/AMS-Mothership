@@ -26,7 +26,7 @@ export function BranchImportForm() {
         {state.error && <p className="text-sm text-red-600">{state.error}</p>}
         {state.ok && (
           <p className="text-sm text-emerald-600">
-            Imported {state.imported} branches ({state.created} new). <Link href="/warehouse" className="link">View warehouses</Link>
+            Imported {state.imported} branches ({state.created} new). <Link href="/sales/warehouses" className="link">View warehouses</Link>
           </p>
         )}
       </div>

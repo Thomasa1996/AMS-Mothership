@@ -38,7 +38,7 @@ export async function importBranches(_prev: BranchImportState, formData: FormDat
   }
   if (rows.length === 0) return { error: "No branch profiles found. Each branch sheet starts with \"Apple Moving Warehouse Profile\"." };
   const { created } = await saveBranches(db, user.companyId, rows);
-  revalidatePath("/warehouse");
+  revalidatePath("/sales/warehouses");
   return { ok: true, imported: rows.length, created };
 }
 
@@ -75,7 +75,7 @@ export async function updateBranchCapacity(branchId: string, _prev: FormState, f
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Couldn't save" };
   }
-  revalidatePath("/warehouse");
+  revalidatePath("/sales/warehouses");
   return { ok: true };
 }
 
@@ -106,7 +106,7 @@ export async function saveMarketRates(branchId: string, _prev: FormState, formDa
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Couldn't save" };
   }
-  revalidatePath("/warehouse");
+  revalidatePath("/sales/warehouses");
   revalidatePath("/sales/rates");
   return { ok: true };
 }
@@ -140,7 +140,7 @@ export async function repriceMarket(branchId: string, _prev: FormState, formData
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Couldn't save" };
   }
-  revalidatePath("/warehouse");
+  revalidatePath("/sales/warehouses");
   revalidatePath("/sales/rates");
   return { ok: true };
 }

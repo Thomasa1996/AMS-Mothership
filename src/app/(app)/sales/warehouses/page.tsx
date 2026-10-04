@@ -20,13 +20,13 @@ export default async function WarehousesPage() {
       <PageHeader
         title="Warehouses"
         subtitle={`${branches.length} branches · warehouse profiles and market rates`}
-        actions={user.role === "ADMIN" ? <Link href="/warehouse/import" className="btn">Import profiles</Link> : undefined}
+        actions={user.role === "ADMIN" ? <Link href="/sales/warehouses/import" className="btn">Import profiles</Link> : undefined}
       />
       <div className="card overflow-x-auto">
         {branches.length === 0 ? (
           <EmptyState>
             No branches yet.{" "}
-            {user.role === "ADMIN" && <Link href="/warehouse/import" className="link">Import your branch profile workbook</Link>}
+            {user.role === "ADMIN" && <Link href="/sales/warehouses/import" className="link">Import your branch profile workbook</Link>}
           </EmptyState>
         ) : (
           <table className="table">
@@ -50,7 +50,7 @@ export default async function WarehousesPage() {
                 return (
                   <tr key={b.id}>
                     <td>
-                      <Link href={`/warehouse/${b.id}`} className="link font-medium">{b.name}</Link>
+                      <Link href={`/sales/warehouses/${b.id}`} className="link font-medium">{b.name}</Link>
                       <div className="text-xs text-slate-500">
                         {d.warehouses.length > 1 ? `${d.warehouses.length} warehouses` : d.warehouses[0]?.cityStateZip ?? d.warehouses[0]?.address ?? "No address on file"}
                       </div>

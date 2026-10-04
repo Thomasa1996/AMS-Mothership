@@ -23,7 +23,7 @@ export default async function BranchPage({ params }: { params: Promise<{ id: str
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/warehouse" className="text-sm text-slate-500 hover:text-slate-700">&larr; Warehouses</Link>
+        <Link href="/sales/warehouses" className="text-sm text-slate-500 hover:text-slate-700">&larr; Warehouses</Link>
         <PageHeader
           title={branch.name}
           subtitle={[branch.profileDate && `Profile dated ${branch.profileDate}`, branch.approval].filter(Boolean).join(" · ") || "Warehouse profile"}
@@ -88,7 +88,7 @@ export default async function BranchPage({ params }: { params: Promise<{ id: str
           </div>
           <div className="flex gap-2">
             <Link href={`/sales/rates?market=${branch.id}`} className="btn">View full rate card</Link>
-            {user.role === "ADMIN" && <Link href={`/warehouse/${branch.id}/rates`} className="btn">Edit market rates</Link>}
+            {user.role === "ADMIN" && <Link href={`/sales/warehouses/${branch.id}/rates`} className="btn">Edit market rates</Link>}
           </div>
         </div>
         {branch.marketNotes && <p className="mb-3 whitespace-pre-line text-xs text-slate-500">{branch.marketNotes}</p>}

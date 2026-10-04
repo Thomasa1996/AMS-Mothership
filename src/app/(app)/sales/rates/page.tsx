@@ -19,7 +19,7 @@ export default async function RateCardPage({ searchParams }: { searchParams: Pro
         subtitle={branch ? `${branch.name} market rates` : "Standard commercial rates"}
         actions={
           user.role === "ADMIN" ? (
-            <Link href={branch ? `/warehouse/${branch.id}/rates` : "/settings/rates"} className="btn">Edit rates</Link>
+            <Link href={branch ? `/sales/warehouses/${branch.id}/rates` : "/settings/rates"} className="btn">Edit rates</Link>
           ) : undefined
         }
       />
