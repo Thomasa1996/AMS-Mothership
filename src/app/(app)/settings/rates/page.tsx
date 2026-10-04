@@ -14,7 +14,7 @@ export default async function RateCardSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Rate card" subtitle={`${rates.length} rates. Reps pick from these when building quotes.`} />
+      <PageHeader title="Rate card" subtitle={`${rates.length} standard rates. Each market's prices are set on its Warehouses page; changing a standard rate here doesn't change them.`} />
       <section className="card p-4">
         <h2 className="mb-3 font-semibold">Add a rate</h2>
         <RateRowForm action={saveRate.bind(null, null)} categories={categories} />

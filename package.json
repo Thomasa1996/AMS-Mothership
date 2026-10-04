@@ -13,7 +13,8 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "rm -f prisma/dev.db prisma/dev.db-journal && prisma db push && tsx prisma/seed.ts",
-    "import:vendors": "tsx scripts/import-vendors.ts"
+    "import:vendors": "tsx scripts/import-vendors.ts",
+    "import:branches": "tsx scripts/import-branches.ts"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",

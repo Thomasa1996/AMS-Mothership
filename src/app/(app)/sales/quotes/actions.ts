@@ -29,6 +29,10 @@ async function parseInput(input: unknown, user: User) {
   if (!parsed.success) return { error: firstError(parsed.error) } as const;
   const project = await db.project.findFirst({ where: { id: parsed.data.projectId, ...projectScope(user) } });
   if (!project) return { error: "Project not found" } as const;
+  if (parsed.data.branchId) {
+    const branch = await db.branch.findFirst({ where: { id: parsed.data.branchId, companyId: user.companyId }, select: { id: true } });
+    if (!branch) return { error: "Market not found" } as const;
+  }
   return { data: parsed.data, project } as const;
 }
 

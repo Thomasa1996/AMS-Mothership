@@ -36,6 +36,7 @@ model Company {
   vendors    Vendor[]
   rateItems  RateItem[]
   quotes     Quote[]
+  branches   Branch[]
 }
 
 // Roles: ADMIN, SALES, PROJECT_MANAGER, WAREHOUSE, CREW
@@ -183,6 +184,8 @@ model RateItem {
   position  Int      @default(0)
   createdAt DateTime @default(now())
 
+  marketRates BranchRate[]
+
   @@index([companyId])
 }
 
@@ -220,6 +223,9 @@ model Quote {
   totalCents          Int       @default(0)
   createdById         String
   createdBy           User      @relation(fields: [createdById], references: [id])
+  // Market whose rate card the quote was priced from; blank means the standard rates.
+  branchId            String?
+  branch              Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
   sentAt              DateTime?
   decidedAt           DateTime?
   createdAt           DateTime  @default(now())
@@ -245,4 +251,48 @@ model QuoteLine {
   rateCents   Int
   amountCents Int
   note        String?
+}
+
+// A branch (market) with its warehouse profile, imported from the branch profile workbook.
+// Profile sections, contacts and warehouse addresses are stored as JSON because each branch's
+// sheet has a slightly different shape (one to three warehouses, extra rows).
+model Branch {
+  id            String   @id @default(cuid())
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id])
+  name          String
+  position      Int      @default(0)
+  profileDate   String?
+  approval      String?
+  warehouses    String   @default("[]") // [{ address, cityStateZip }]
+  contacts      String   @default("[]") // [{ name, title, phone, email }]
+  profile       String   @default("[]") // [{ title, facts: [{ label, values: string[] }] }]
+  // From the "Warehouse capacity" sheet; blank in the file, filled in by the team.
+  warehouseSpace String?
+  scale          String?
+  warehouseNotes String?
+  warehouseGrade Int?
+  // Market pricing: multipliers applied to the standard rate card, and where they came from.
+  laborFactor   Float    @default(1)
+  storageFactor Float    @default(1)
+  marketNotes   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  rates  BranchRate[]
+  quotes Quote[]
+
+  @@unique([companyId, name])
+}
+
+// One market's price for a rate card item. Missing rows fall back to the standard rate.
+model BranchRate {
+  id         String   @id @default(cuid())
+  branchId   String
+  branch     Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  rateItemId String
+  rateItem   RateItem @relation(fields: [rateItemId], references: [id], onDelete: Cascade)
+  rateCents  Int
+
+  @@unique([branchId, rateItemId])
 }

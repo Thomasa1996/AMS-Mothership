@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { marketRateCents } from "@/lib/market-rates";
 import { requireUser } from "@/lib/auth";
 import { parseDollarsToCents } from "@/lib/quote-math";
 import { firstError, formToObject, type FormState } from "@/lib/validation";
@@ -61,8 +62,16 @@ export async function saveRate(rateId: string | null, _prev: FormState, formData
     if (!count) return { error: "Rate not found" };
   } else {
     const last = await db.rateItem.aggregate({ where: { companyId: admin.companyId }, _max: { position: true } });
+    // Each market gets the new rate too, adjusted by its labor or storage factor.
+    const branches = await db.branch.findMany({ where: { companyId: admin.companyId } });
     await db.rateItem.create({
-      data: { ...rest, rateCents: rate, companyId: admin.companyId, position: (last._max.position ?? -1) + 1 },
+      data: {
+        ...rest,
+        rateCents: rate,
+        companyId: admin.companyId,
+        position: (last._max.position ?? -1) + 1,
+        marketRates: { create: branches.map((b) => ({ branchId: b.id, rateCents: marketRateCents(rate, rest.category, b) })) },
+      },
     });
   }
   revalidatePath("/settings/rates");

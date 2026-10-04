@@ -70,6 +70,10 @@ export const QuoteLineInput = z.object({
 
 export const QuoteInput = z.object({
   projectId: z.string().min(1, "Choose a project"),
+  branchId: z
+    .string()
+    .nullish()
+    .transform((v) => v || null),
   title: text(300).min(1, "Give the quote a title"),
   quoteDate: z
     .string()

@@ -6,6 +6,9 @@ import type { SaveState } from "./actions";
 
 export type RateOption = { id: string; category: string; name: string; unit: string; rateCents: number; notes: string | null };
 
+// A market's prices by rate item id; items missing here use the standard rate.
+export type MarketOption = { id: string; name: string; rates: Record<string, number> };
+
 export type ProjectOption = {
   id: string;
   name: string;
@@ -25,6 +28,7 @@ export type DraftLine = {
 
 export type QuoteDraft = {
   projectId: string;
+  branchId: string;
   title: string;
   quoteDate: string;
   serviceDescription: string;
@@ -109,12 +113,14 @@ export function QuoteBuilder({
   initial,
   projects,
   rates,
+  markets,
   save,
   submitLabel,
 }: {
   initial: QuoteDraft;
   projects: ProjectOption[];
   rates: RateOption[];
+  markets: MarketOption[];
   save: (input: unknown) => Promise<SaveState>;
   submitLabel: string;
 }) {
@@ -137,6 +143,9 @@ export function QuoteBuilder({
       return { ...d, lines };
     });
 
+  const market = markets.find((m) => m.id === draft.branchId);
+  const priceOf = (rate: RateOption) => market?.rates[rate.id] ?? rate.rateCents;
+
   const addLine = (rate?: RateOption) =>
     setDraft((d) => ({
       ...d,
@@ -149,7 +158,7 @@ export function QuoteBuilder({
               description: rate.name,
               quantity: "1",
               unit: rate.unit,
-              rate: (rate.rateCents / 100).toFixed(2),
+              rate: (priceOf(rate) / 100).toFixed(2),
               note: "",
             }
           : { key: newKey(), category: "", description: "", quantity: "1", unit: "flat", rate: "", note: "" },
@@ -210,6 +219,7 @@ export function QuoteBuilder({
     const { lines, ...rest } = draft;
     const input = {
       ...rest,
+      branchId: rest.branchId || null,
       clientLogo: rest.clientLogo || null,
       lines: lines.map((l, i) => ({
         category: l.category,
@@ -242,6 +252,18 @@ export function QuoteBuilder({
             </select>
           </div>
           <Text label="Quote title" value={draft.title} onChange={set("title")} placeholder="Relocation to MO" />
+          {markets.length > 0 && (
+            <div>
+              <label className="label">Market (prices from the rate card)</label>
+              <select className="input" value={draft.branchId} onChange={(e) => set("branchId")(e.target.value)}>
+                <option value="">Standard rates</option>
+                {markets.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-slate-500">Lines already added keep their prices.</p>
+            </div>
+          )}
           <Text label="Quote date" type="date" value={draft.quoteDate} onChange={set("quoteDate")} />
           <Text
             label="Service (finishes the intro sentence)"
@@ -375,7 +397,7 @@ export function QuoteBuilder({
                     >
                       <span>{r.name}</span>
                       <span className="whitespace-nowrap text-slate-500">
-                        {formatCents(r.rateCents)} / {r.unit}
+                        {formatCents(priceOf(r))} / {r.unit}
                       </span>
                     </button>
                   ))}
