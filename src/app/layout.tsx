@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Mothership",
-  description: "Relocation Shephard Software: CRM, operations and sales for commercial movers",
+  description: "Mothership: AMS Commercial Moving. CRM, operations and sales for commercial moves",
 };
 
 // Dark is the default, including the sign-in page; each person can switch in My profile.

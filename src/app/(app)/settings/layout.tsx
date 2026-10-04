@@ -16,6 +16,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
                 { href: "/settings/rates", label: "Rate card" },
                 { href: "/settings/quote-template", label: "Quote template" },
                 { href: "/settings/hubspot", label: "HubSpot" },
+                { href: "/settings/smartsheet", label: "Smartsheet" },
               ]
             : []),
         ]}

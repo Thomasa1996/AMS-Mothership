@@ -32,6 +32,11 @@ model Company {
   // Set while a sync runs so two syncs can't overlap and create duplicates.
   hubspotSyncStartedAt DateTime?
   hubspotSyncResult String?
+  // Smartsheet API token, encrypted, and which region's API it belongs to (us, eu, gov, au).
+  smartsheetToken    String?
+  smartsheetRegion   String  @default("us")
+  // JSON array of sheet ids shown under Sales > Project management; empty or null shows every sheet.
+  smartsheetSheetIds String?
   rateCardNotes              String?
 
   users      User[]

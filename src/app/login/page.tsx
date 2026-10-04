@@ -20,7 +20,7 @@ export default async function LoginPage() {
         </div>
         <div className="card p-6">
           <h1 className="mb-1 text-lg font-semibold">Sign in</h1>
-          <p className="mb-5 text-sm text-slate-500">Mothership · Relocation Shephard Software</p>
+          <p className="mb-5 text-sm text-slate-500">Mothership: AMS Commercial Moving</p>
           <LoginForm />
         </div>
       </div>
