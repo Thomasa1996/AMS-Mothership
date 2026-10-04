@@ -8,7 +8,7 @@ import { NewUserForm } from "./forms";
 
 export default async function UsersPage() {
   const user = await requireUser();
-  if (user.role !== "ADMIN") redirect("/crm/accounts");
+  if (user.role !== "ADMIN") redirect("/settings/profile");
   const users = await db.user.findMany({ where: { companyId: user.companyId }, orderBy: { name: "asc" } });
   return (
     <div className="max-w-3xl space-y-6">

@@ -36,7 +36,7 @@ export function MainNav() {
 export function SubNav({ items }: { items: { href: string; label: string }[] }) {
   const pathname = usePathname();
   return (
-    <div className="flex gap-4 overflow-x-auto border-b border-slate-200">
+    <div className="flex gap-4 overflow-x-auto border-b border-slate-200 print:hidden">
       {items.map((item) => {
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
         return (

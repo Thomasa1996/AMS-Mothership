@@ -43,3 +43,36 @@
     @apply font-medium text-brand-600 hover:underline;
   }
 }
+
+/* Client proposals: letter-size pages on screen, one per printed sheet. */
+.proposal-page {
+  width: 8.5in;
+  max-width: 100%;
+  min-height: 11in;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media print {
+  @page {
+    size: letter;
+    margin: 0;
+  }
+  body {
+    background: white;
+  }
+  .proposal {
+    margin: 0 !important;
+  }
+  .proposal > * + * {
+    margin-top: 0 !important;
+  }
+  .proposal-page {
+    box-shadow: none;
+    height: 11in;
+    overflow: hidden;
+  }
+  .proposal-break {
+    break-after: page;
+  }
+}

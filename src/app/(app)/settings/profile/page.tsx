@@ -1,0 +1,34 @@
+import { requireUser } from "@/lib/auth";
+import { roleLabel } from "@/lib/constants";
+import { PageHeader } from "@/components/ui";
+import { saveProfile } from "../actions";
+import { ImageInput, SettingsForm } from "../forms";
+
+export default async function ProfilePage() {
+  const user = await requireUser();
+  return (
+    <div className="max-w-2xl space-y-6">
+      <PageHeader title="My profile" subtitle={`${user.email} · ${roleLabel(user.role)}`} />
+      <div className="card p-5">
+        <SettingsForm action={saveProfile}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label" htmlFor="name">Name</label>
+              <input className="input" id="name" name="name" defaultValue={user.name} required />
+            </div>
+            <div>
+              <label className="label" htmlFor="title">Title on quotes</label>
+              <input className="input" id="title" name="title" defaultValue={user.title ?? ""} placeholder="Commercial Sales Manager" />
+            </div>
+          </div>
+          <ImageInput
+            name="signature"
+            label="Signature"
+            defaultValue={user.signature}
+            hint="Printed on the cover and sign-off of quotes you prepare. Sign on white paper, photograph it, and crop it tight."
+          />
+        </SettingsForm>
+      </div>
+    </div>
+  );
+}

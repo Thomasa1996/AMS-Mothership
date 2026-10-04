@@ -10,7 +10,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await requireUser();
   return (
     <div className="min-h-screen">
-      <header className="bg-brand-900 text-white">
+      <header className="bg-brand-900 text-white print:hidden">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 overflow-hidden px-4 py-2.5">
           <Link href="/crm/accounts">
             <Logo />
@@ -18,11 +18,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <MainNav />
           <div className="ml-auto flex items-center gap-3 text-sm">
             <span className="hidden text-white/70 sm:inline">{user.company.name}</span>
-            {user.role === "ADMIN" && (
-              <Link href="/settings/users" className="text-white/70 hover:text-white">
-                Settings
-              </Link>
-            )}
+            <Link href={user.role === "ADMIN" ? "/settings/users" : "/settings/profile"} className="text-white/70 hover:text-white">
+              Settings
+            </Link>
             <span className="flex items-center gap-2" title={roleLabel(user.role)}>
               <Avatar name={user.name} />
               <span className="hidden md:inline">{user.name}</span>
@@ -33,7 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
+      <main className="mx-auto max-w-7xl px-4 py-6 print:max-w-none print:p-0">{children}</main>
     </div>
   );
 }

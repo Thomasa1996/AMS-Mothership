@@ -7,6 +7,8 @@ import { Field, PageHeader, StageBadge } from "@/components/ui";
 import { addActivity, deleteProject, updateProject } from "../../actions";
 import { ActivityForm, ConfirmButton, ProjectForm } from "../../forms";
 import { ActivityFeed } from "../../activity-feed";
+import { formatCents } from "@/lib/quote-math";
+import { QuoteStatusBadge } from "@/app/(app)/sales/quotes/status";
 
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
@@ -17,6 +19,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       account: { include: { contacts: { where: { isPrimary: true }, take: 1 } } },
       manager: true,
       activities: { orderBy: { createdAt: "desc" }, include: { user: { select: { name: true } } } },
+      quotes: { orderBy: { number: "desc" } },
     },
   });
   if (!project) notFound();
@@ -69,9 +72,26 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
               <div className="col-span-2"><Field label="Moving to">{project.destinationAddress}</Field></div>
             </dl>
           </section>
-          <section className="card p-4 text-sm text-slate-600">
-            <p className="mb-2 font-semibold text-slate-900">Coming next</p>
-            <p>Quotes (Phase 2) and the crew schedule and task checklist (Phase 3) will appear on this page.</p>
+          <section className="card p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-semibold">Quotes</h2>
+              <Link href={`/sales/quotes/new?projectId=${project.id}`} className="btn py-1">New quote</Link>
+            </div>
+            {project.quotes.length === 0 ? (
+              <p className="text-sm text-slate-500">No quotes yet.</p>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {project.quotes.map((q) => (
+                  <li key={q.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+                    <span className="min-w-0">
+                      <Link href={`/sales/quotes/${q.id}`} className="link">#{q.number} {q.title}</Link>
+                      <span className="ml-2"><QuoteStatusBadge status={q.status} /></span>
+                    </span>
+                    <span className="whitespace-nowrap font-medium">{formatCents(q.totalCents)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
           <ConfirmButton
             action={deleteProject.bind(null, project.id)}

@@ -2,6 +2,8 @@
 // Run with: npm run db:seed (or npm run db:reset to wipe and reseed).
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
+import { RATE_CARD, RATE_CARD_NOTES } from "./rate-card";
+import { DEFAULT_TEMPLATE } from "../src/lib/quote-template";
 
 const db = new PrismaClient();
 
@@ -19,12 +21,26 @@ async function main() {
     console.log("Database already has data; run npm run db:reset to start over.");
     return;
   }
-  const company = await db.company.create({ data: { name: "Apple Moving" } });
+  const company = await db.company.create({
+    data: { name: "Apple Moving", displayName: "Apple Moving", rateCardNotes: RATE_CARD_NOTES },
+  });
+  await db.rateItem.createMany({
+    data: RATE_CARD.map((r, i) => ({
+      companyId: company.id,
+      category: r.category,
+      name: r.name,
+      unit: r.unit,
+      rateCents: Math.round(r.rate * 100),
+      notes: r.notes ?? null,
+      position: i,
+    })),
+  });
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
   const mk = (name: string, email: string, role: string) =>
     db.user.create({ data: { companyId: company.id, name, email, role, passwordHash } });
 
   const thomas = await mk("Thomas Anderson", "admin@mothership.local", "ADMIN");
+  await db.user.update({ where: { id: thomas.id }, data: { title: "Commercial Sales Manager" } });
   const sarah = await mk("Sarah Kim", "sarah@mothership.local", "SALES");
   const marcus = await mk("Marcus Reed", "marcus@mothership.local", "SALES");
   const dana = await mk("Dana Ortiz", "dana@mothership.local", "PROJECT_MANAGER");
@@ -105,6 +121,44 @@ async function main() {
       });
     }
   }
+
+  // A sample proposal in the Project Recommendation Plan format.
+  const hq = await db.project.findFirstOrThrow({ where: { companyId: company.id, name: "HQ relocation, floors 4-6" } });
+  const lines = [
+    { category: "Project Crew Rates", description: "Relocation of floors 4-6", quantity: 1, unit: "flat", rateCents: 7420000, note: "includes IT disconnect and reconnect" },
+    { category: "Storage", description: "Storage per month", quantity: 1200, unit: "sq. ft.", rateCents: 175, note: null },
+    { category: "Packing Materials & Moving Supplies", description: "Packing materials", quantity: 1, unit: "flat", rateCents: 980000, note: null },
+  ];
+  await db.quote.create({
+    data: {
+      companyId: company.id,
+      projectId: hq.id,
+      number: 1001,
+      title: "HQ relocation, floors 4-6",
+      status: "SENT",
+      sentAt: new Date(),
+      quoteDate: day(-3),
+      recipientName: "Patricia Lowe",
+      recipientTitle: "Office Manager",
+      recipientCompany: "Hartwell & Lowe LLP",
+      recipientEmail: "plowe@hartwell-lowe.example",
+      clientLabel: "Hartwell & Lowe",
+      serviceDescription: "relocation services from 1700 K Street NW to 2100 Pennsylvania Ave NW",
+      intro: DEFAULT_TEMPLATE.intro,
+      scopeTitle: "Primary Relocation/Installation",
+      timeline: "Weekend of November 14-16",
+      scope: "Please note the following information:\n• 3 floors, about 140 workstations\n• 22 private offices and 4 conference rooms\n• Loading dock available Friday after 6PM\n• Some furniture will go to storage until the 5th floor build-out is complete",
+      investmentHeading: DEFAULT_TEMPLATE.investmentHeading,
+      totalLabel: "Firm Fixed Project Total",
+      valuation: DEFAULT_TEMPLATE.valuation,
+      optionalValuation: DEFAULT_TEMPLATE.optionalValuation,
+      companyDuties: DEFAULT_TEMPLATE.companyDuties,
+      clientDuties: DEFAULT_TEMPLATE.clientDuties,
+      createdById: thomas.id,
+      totalCents: lines.reduce((s, l) => s + Math.round(l.quantity * l.rateCents), 0),
+      lines: { create: lines.map((l, i) => ({ ...l, position: i, amountCents: Math.round(l.quantity * l.rateCents) })) },
+    },
+  });
 
   console.log(`Seeded ${company.name}. Sign in as admin@mothership.local with password "${DEMO_PASSWORD}".`);
 }

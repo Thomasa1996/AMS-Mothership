@@ -16,12 +16,26 @@ model Company {
   name      String
   createdAt DateTime @default(now())
 
+  // Quote template: branding and boilerplate copied into each new quote.
+  displayName                String?
+  logo                       String?
+  quoteIntro                 String?
+  quoteInvestmentHeading     String?
+  quoteValuation             String?
+  quoteOptionalValuation     String?
+  quoteCompanyDuties         String?
+  quoteClientDuties          String?
+  // Policies printed under the rate card (travel time, overtime, minimums).
+  rateCardNotes              String?
+
   users      User[]
   accounts   Account[]
   contacts   Contact[]
   projects   Project[]
   activities Activity[]
   vendors    Vendor[]
+  rateItems  RateItem[]
+  quotes     Quote[]
 }
 
 // Roles: ADMIN, SALES, PROJECT_MANAGER, WAREHOUSE, CREW
@@ -33,11 +47,15 @@ model User {
   email        String   @unique
   passwordHash String
   role         String   @default("SALES")
+  title        String?
+  // Signature image (data URL) printed on quotes this person prepares.
+  signature    String?
   createdAt    DateTime @default(now())
 
   ownedAccounts   Account[]  @relation("AccountOwner")
   managedProjects Project[]  @relation("ProjectManager")
   activities      Activity[]
+  quotes          Quote[]
 }
 
 model Account {
@@ -99,6 +117,7 @@ model Project {
   updatedAt          DateTime  @updatedAt
 
   activities Activity[]
+  quotes     Quote[]
 
   @@index([companyId, stage])
 }
@@ -147,4 +166,83 @@ model Vendor {
   updatedAt          DateTime @updatedAt
 
   @@index([companyId, category])
+}
+
+// The company's standard prices (the rate sheet), used to fill quote lines so every rep
+// prices the same way. Category is a rate sheet section such as "Project Crew Rates". Rates are in cents.
+model RateItem {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  category  String
+  name      String
+  unit      String
+  rateCents Int
+  notes     String?
+  active    Boolean  @default(true)
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([companyId])
+}
+
+// A client proposal ("Project Recommendation Plan"). Statuses: DRAFT, SENT, ACCEPTED, DECLINED.
+// Money is in cents; the total is stored for fast lists. Boilerplate (intro, valuation, terms)
+// is copied from the company's quote template when the quote is created, then editable per quote.
+model Quote {
+  id                  String    @id @default(cuid())
+  companyId           String
+  company             Company   @relation(fields: [companyId], references: [id])
+  projectId           String
+  project             Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  number              Int
+  title               String
+  status              String    @default("DRAFT")
+  quoteDate           DateTime
+  recipientName       String?
+  recipientTitle      String?
+  recipientCompany    String?
+  recipientPhone      String?
+  recipientEmail      String?
+  clientLogo          String?
+  clientLabel         String
+  serviceDescription  String
+  intro               String
+  scopeTitle          String
+  timeline            String?
+  scope               String?
+  investmentHeading   String
+  totalLabel          String
+  valuation           String
+  optionalValuation   String?
+  companyDuties       String
+  clientDuties        String
+  totalCents          Int       @default(0)
+  createdById         String
+  createdBy           User      @relation(fields: [createdById], references: [id])
+  sentAt              DateTime?
+  decidedAt           DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  lines QuoteLine[]
+
+  @@unique([companyId, number])
+  @@index([companyId, status])
+}
+
+// One priced line in the Financial Investment section. Note is shown in brackets after the price;
+// when blank and quantity isn't 1, the quantity and rate are shown instead.
+model QuoteLine {
+  id          String  @id @default(cuid())
+  quoteId     String
+  quote       Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  position    Int
+  category    String
+  description String
+  quantity    Float
+  unit        String
+  rateCents   Int
+  amountCents Int
+  note        String?
 }
