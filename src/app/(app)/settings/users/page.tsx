@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui";
 import { PhotoUpload } from "@/components/photo-upload";
 import { photoUrl } from "@/lib/photos";
 import { changeRole, restoreUser } from "./actions";
-import { NewUserForm, RemoveUserButton } from "./forms";
+import { NewUserForm, RemoveUserButton, SetPasswordButton } from "./forms";
 
 export default async function UsersPage() {
   const user = await requireUser();
@@ -20,7 +20,7 @@ export default async function UsersPage() {
   const removed = everyone.filter((u) => !u.active);
   const teammates = users.map((u) => ({ id: u.id, name: u.name }));
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-5xl space-y-6">
       <PageHeader title="Team" subtitle={`${users.length} people at ${user.company.name}. Click Add photo next to anyone to upload their picture.`} />
       <div className="card overflow-x-auto">
         <table className="table">
@@ -45,7 +45,10 @@ export default async function UsersPage() {
                   {u.id === user.id ? (
                     <span className="text-xs text-slate-400">You</span>
                   ) : (
-                    <RemoveUserButton user={{ id: u.id, name: u.name, accounts: u._count.ownedAccounts }} teammates={teammates} defaultHandTo={user.id} />
+                    <div className="flex flex-col items-end gap-1">
+                      <SetPasswordButton user={{ id: u.id, name: u.name }} />
+                      <RemoveUserButton user={{ id: u.id, name: u.name, accounts: u._count.ownedAccounts }} teammates={teammates} defaultHandTo={user.id} />
+                    </div>
                   )}
                 </td>
               </tr>

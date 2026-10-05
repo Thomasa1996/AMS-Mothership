@@ -4,7 +4,7 @@ import { useFormAction } from "@/lib/use-form-action";
 import { ROLES } from "@/lib/constants";
 import type { FormState } from "@/lib/validation";
 import { useState, useTransition } from "react";
-import { createUser, removeUser } from "./actions";
+import { createUser, removeUser, setPassword } from "./actions";
 
 export function NewUserForm() {
   const { state, onSubmit, pending, ref } = useFormAction<FormState>(createUser, {}, { resetOnSuccess: true });
@@ -73,6 +73,46 @@ export function RemoveUserButton({ user, teammates, defaultHandTo }: { user: { i
         </button>
         <button className="text-slate-500" onClick={() => setOpen(false)}>Cancel</button>
         {error && <span className="text-red-600">{error}</span>}
+      </div>
+    </div>
+  );
+}
+
+export function SetPasswordButton({ user }: { user: { id: string; name: string } }) {
+  const [open, setOpen] = useState(false);
+  const [password, setPw] = useState("");
+  const [state, setState] = useState<FormState>({});
+  const [pending, start] = useTransition();
+  if (!open) {
+    return (
+      <span className="flex items-center justify-end gap-2">
+        {state.ok && <span className="whitespace-nowrap text-xs text-emerald-600">Password changed</span>}
+        <button className="whitespace-nowrap text-sm text-slate-400 hover:text-slate-800" onClick={() => { setOpen(true); setState({}); }}>Set password</button>
+      </span>
+    );
+  }
+  return (
+    <div className="space-y-2 rounded-md border border-slate-200 p-3 text-left text-sm">
+      <label className="block">
+        New password for <b>{user.name}</b>
+        <input className="input mt-1 py-1" type="text" autoComplete="off" minLength={8} value={password} onChange={(e) => setPw(e.target.value)} placeholder="At least 8 characters" />
+      </label>
+      <div className="flex items-center gap-3">
+        <button
+          className="btn btn-primary py-1"
+          disabled={pending || password.length < 8}
+          onClick={() =>
+            start(async () => {
+              const res = await setPassword(user.id, password);
+              setState(res);
+              if (res.ok) { setOpen(false); setPw(""); }
+            })
+          }
+        >
+          {pending ? "Saving..." : "Save password"}
+        </button>
+        <button className="text-slate-500" onClick={() => { setOpen(false); setPw(""); }}>Cancel</button>
+        {state.error && <span className="text-red-600">{state.error}</span>}
       </div>
     </div>
   );

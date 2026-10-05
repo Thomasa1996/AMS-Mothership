@@ -72,3 +72,15 @@ export async function restoreUser(userId: string) {
   await db.user.updateMany({ where: { id: userId, companyId: admin.companyId }, data: { active: true } });
   revalidatePath("/settings/users");
 }
+
+// An admin sets a new password for a teammate, e.g. when they forget theirs.
+export async function setPassword(userId: string, password: string): Promise<FormState> {
+  const admin = await requireAdmin();
+  if (password.length < 8) return { error: "Password must be at least 8 characters" };
+  const res = await db.user.updateMany({
+    where: { id: userId, companyId: admin.companyId },
+    data: { passwordHash: await bcrypt.hash(password, 10) },
+  });
+  if (!res.count) return { error: "That person isn't on the team" };
+  return { ok: true };
+}
