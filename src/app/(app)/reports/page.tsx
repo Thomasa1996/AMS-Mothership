@@ -29,7 +29,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Reports" subtitle="Power BI reports. Only admins can see this tab." />
+      <PageHeader title="Revenue" subtitle="Power BI reports. Only admins can see this tab." />
 
       {current ? (
         <section className="space-y-3">

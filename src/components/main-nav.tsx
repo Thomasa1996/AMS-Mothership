@@ -8,7 +8,7 @@ const TABS = [
   { href: "/operations", label: "Operations" },
   { href: "/sales", label: "Sales" },
   { href: "/training", label: "Training" },
-  { href: "/reports", label: "Reports", adminOnly: true },
+  { href: "/reports", label: "Revenue", adminOnly: true },
 ];
 
 export function MainNav({ admin }: { admin: boolean }) {
