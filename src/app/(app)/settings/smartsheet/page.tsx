@@ -49,7 +49,7 @@ export default async function SmartsheetSettingsPage({ searchParams }: { searchP
     <div className="max-w-3xl space-y-6">
       <PageHeader
         title="Smartsheet"
-        subtitle="Shows your Smartsheet sheets under Sales, Project management, and can copy your project sheet into the CRM. Nothing in Smartsheet is changed."
+        subtitle="Shows your Smartsheet sheets under Sales, Master List Project Management, and can copy your project sheet into the CRM. Nothing in Smartsheet is changed."
       />
       <section className="card space-y-4 p-5">
         <div className="flex items-center justify-between gap-3">
@@ -58,7 +58,7 @@ export default async function SmartsheetSettingsPage({ searchParams }: { searchP
             <ConfirmButton
               action={disconnectSmartsheet}
               label="Disconnect"
-              confirmText="Disconnect Smartsheet? Project management will be empty until it's connected again."
+              confirmText="Disconnect Smartsheet? Master List Project Management will be empty until it's connected again."
               className="text-sm text-slate-500 hover:text-red-600"
             />
           )}

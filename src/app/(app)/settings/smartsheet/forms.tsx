@@ -27,7 +27,7 @@ export function ConnectForm({ connected, region }: { connected: boolean; region:
       <div className="flex items-center gap-3">
         <button className="btn btn-primary" disabled={pending}>{pending ? "Checking..." : connected ? "Save new token" : "Connect Smartsheet"}</button>
         {state.error && <span className="text-sm text-red-600">{state.error}</span>}
-        {state.ok && <span className="text-sm text-emerald-600">Connected. Your sheets are under Sales, Project management.</span>}
+        {state.ok && <span className="text-sm text-emerald-600">Connected. Your sheets are under Sales, Master List Project Management.</span>}
       </div>
     </form>
   );

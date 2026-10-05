@@ -14,7 +14,7 @@ export default async function ProjectManagementPage() {
   if (!conn) {
     return (
       <div>
-        <PageHeader title="Project management" subtitle="Your project sheets from Smartsheet" />
+        <PageHeader title="Master List Project Management" subtitle="Your project sheets from Smartsheet" />
         <div className="card p-6 text-sm text-slate-600">
           Smartsheet isn&apos;t connected yet.{" "}
           {admin ? (
@@ -38,7 +38,7 @@ export default async function ProjectManagementPage() {
   return (
     <div>
       <PageHeader
-        title="Project management"
+        title="Master List Project Management"
         subtitle={error ? "Your project sheets from Smartsheet" : `${sheets.length} sheets from Smartsheet, read live`}
         actions={admin ? <Link href="/settings/smartsheet" className="btn">Choose sheets</Link> : undefined}
       />
