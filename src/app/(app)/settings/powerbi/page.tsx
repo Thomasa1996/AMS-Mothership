@@ -67,7 +67,7 @@ export default async function PowerBiSettingsPage({ searchParams }: { searchPara
     <div className="max-w-3xl space-y-6">
       <PageHeader
         title="Power BI"
-        subtitle="Reads Commercial Revenue, Actual Rev and Corporate Revenue by month from your Power BI dataset for Revenue › Year over year, once a day and whenever you click Read now. Nothing in Power BI is changed."
+        subtitle="Reads Commercial Revenue (Actual Rev and Corporate Account) by month from your Power BI dataset for Revenue › Year over year, once a day and whenever you click Read now. Nothing in Power BI is changed."
       />
 
       <section className="card space-y-4 p-5">

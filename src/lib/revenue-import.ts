@@ -8,6 +8,7 @@ import ExcelJS from "exceljs";
 // Rows for the same month are added together.
 
 export type MonthTotal = { year: number; month: number; amount: number };
+export type LineMonth = MonthTotal & { series: string };
 type Cell = string | number | Date | null;
 
 const MONTH_NAMES = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
@@ -54,7 +55,7 @@ export function yearMonthFrom(v: Cell): [number, number] | null {
   return null;
 }
 
-export function parseRevenueRows(rows: Cell[][]): MonthTotal[] {
+export function parseRevenueRows(rows: Cell[][], defaultYear: number | null = null): MonthTotal[] {
   // The header is the first row with at least two filled cells (exports can start with a title row).
   const h = rows.findIndex((r) => r.filter((c) => norm(c) !== "").length >= 2);
   if (h < 0) throw new Error("The file is empty.");
@@ -95,18 +96,67 @@ export function parseRevenueRows(rows: Cell[][]): MonthTotal[] {
     yearCol >= 0 && monthCol >= 0
       ? -1
       : (cols.find((i) => /date|month|period/.test(header[i]) && share(i, yearMonthFrom) > 0.8) ?? cols.find((i) => share(i, yearMonthFrom) > 0.8) ?? -1);
-  if (dateCol < 0 && (yearCol < 0 || monthCol < 0)) throw new Error("Couldn't find a date column, or Year and Month columns.");
+  const monthOnly = dateCol < 0 && yearCol < 0 && monthCol >= 0 && defaultYear != null;
+  if (dateCol < 0 && !monthOnly && (yearCol < 0 || monthCol < 0)) throw new Error("Couldn't find a date column, or Year and Month columns.");
   const used = new Set([yearCol, monthCol, dateCol]);
   const numeric = cols.filter((i) => !used.has(i) && share(i, amountFrom) > 0.8);
   const amountCol = numeric.find((i) => AMOUNT_HEADER.test(header[i])) ?? numeric[numeric.length - 1];
   if (amountCol == null) throw new Error("Couldn't find a revenue column with dollar amounts.");
 
   for (const r of body) {
-    const ym = dateCol >= 0 ? yearMonthFrom(r[dateCol]) : yearFrom(r[yearCol]) && monthFrom(r[monthCol]) ? ([yearFrom(r[yearCol])!, monthFrom(r[monthCol])!] as [number, number]) : null;
+    const y = monthOnly ? defaultYear : yearFrom(r[yearCol]);
+    const ym = dateCol >= 0 ? yearMonthFrom(r[dateCol]) : y && monthFrom(r[monthCol]) ? ([y, monthFrom(r[monthCol])!] as [number, number]) : null;
     const a = amountFrom(r[amountCol]);
     if (ym && a != null) add(ym[0], ym[1], a);
   }
   return finish(totals);
+}
+
+// Reads a table with a revenue line per row, like Power BI's Category / Month / Type / Sum of Amount
+// matrix copied or exported as a table. The line is the Type column (or Category when there is no
+// Type); subtotal rows with no Type and "(Blank)" amounts are skipped. With no Year column every row
+// is in defaultYear. Tables without a line column are read with parseRevenueRows as one line.
+export function parseRevenueLines(rows: Cell[][], defaultYear: number | null, defaultSeries = "Revenue"): LineMonth[] {
+  const h = rows.findIndex((r) => r.filter((c) => norm(c) !== "").length >= 2);
+  if (h < 0) throw new Error("The table is empty.");
+  const header = rows[h].map(norm);
+  const body = rows.slice(h + 1);
+  const find = (re: RegExp) => header.findIndex((c) => re.test(c));
+  const typeCol = find(/^(type|line|series|revenue type)$/);
+  const categoryCol = find(/^category$/);
+  const lineCol = typeCol >= 0 ? typeCol : categoryCol;
+  const monthCol = find(/^month/);
+  if (lineCol < 0 || monthCol < 0) {
+    const plain = parseRevenueRows(rows.map((r) => r.map((c) => c)), defaultYear);
+    return plain.map((m) => ({ ...m, series: defaultSeries }));
+  }
+  const yearCol = find(/^year$/);
+  const used = new Set([lineCol, monthCol, yearCol, categoryCol]);
+  const amountCol = header.findIndex((c, i) => !used.has(i) && AMOUNT_HEADER.test(c));
+  const col = amountCol >= 0 ? amountCol : header.length - 1;
+  const totals = new Map<string, LineMonth>();
+  for (const r of body) {
+    const series = String(r[lineCol] ?? "").trim();
+    const month = monthFrom(r[monthCol]);
+    const year = yearCol >= 0 ? yearFrom(r[yearCol]) : defaultYear;
+    const amount = amountFrom(r[col]);
+    if (!series || /^total/i.test(series) || !month || amount == null) continue;
+    if (!year) throw new Error("Pick the year these numbers are for.");
+    const k = `${series}|${year}|${month}`;
+    const t = totals.get(k) ?? { series, year, month, amount: 0 };
+    t.amount += amount;
+    totals.set(k, t);
+  }
+  const out = [...totals.values()].map((t) => ({ ...t, amount: Math.round(t.amount) }));
+  if (!out.length) throw new Error("No monthly amounts found.");
+  return out.sort((a, b) => a.series.localeCompare(b.series) || a.year - b.year || a.month - b.month);
+}
+
+// Text copied from a Power BI table or Excel: tab-separated (or comma-separated) rows.
+export function parsePastedRevenue(text: string, defaultYear: number | null): LineMonth[] {
+  const lines = text.replace(/\r/g, "").split("\n").filter((l) => l.trim());
+  const rows = lines.some((l) => l.includes("\t")) ? lines.map((l) => l.split("\t")) : parseCsv(lines.join("\n"));
+  return parseRevenueLines(rows, defaultYear);
 }
 
 function finish(totals: Map<string, MonthTotal>) {
@@ -137,8 +187,8 @@ function parseCsv(text: string): Cell[][] {
   return rows;
 }
 
-export async function readRevenueFile(name: string, data: Buffer): Promise<MonthTotal[]> {
-  if (name.toLowerCase().endsWith(".csv")) return parseRevenueRows(parseCsv(data.toString("utf8").replace(/^﻿/, "")));
+export async function readRevenueFile(name: string, data: Buffer, defaultYear: number | null): Promise<LineMonth[]> {
+  if (name.toLowerCase().endsWith(".csv")) return parseRevenueLines(parseCsv(data.toString("utf8").replace(/^\uFEFF/, "")), defaultYear);
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(data as unknown as ArrayBuffer);
   let lastError: unknown = null;
@@ -158,7 +208,7 @@ export async function readRevenueFile(name: string, data: Buffer): Promise<Month
       rows.push(vals);
     });
     try {
-      return parseRevenueRows(rows);
+      return parseRevenueLines(rows, defaultYear);
     } catch (e) {
       lastError = e;
     }

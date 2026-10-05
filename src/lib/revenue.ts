@@ -1,42 +1,44 @@
 import { db } from "./db";
-import { WON_STAGES } from "./constants";
 
-// Revenue by month for Revenue > Year over year. A month's figure is the stored total (from Power BI,
-// an uploaded export, or typed in), when there is one; otherwise the value of projects won that month (by close date, or
-// move date when a project has no close date).
+// Revenue lines by month for Revenue > Year over year. Each line (such as "Actual Rev") comes from
+// Power BI, with any pasted, uploaded or typed month taking its place.
 
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-// source: POWERBI, UPLOAD or TYPED for a stored month; DEALS when added up from won projects.
-export type MonthRevenue = { month: number; amount: number; source: "POWERBI" | "UPLOAD" | "TYPED" | "DEALS"; projects: number };
+// Power BI's Commercial Revenue splits into these types; the page also shows their total.
+export const TOTAL_LINE = "Commercial Revenue";
+export const DEFAULT_LINES = ["Actual Rev", "Corporate Account"];
+// Types in the Power BI table that aren't revenue.
+export const isIgnoredLine = (name: string) => /budget|forecast|target/i.test(name);
 
-export async function monthlyRevenue(companyId: string, year: number): Promise<MonthRevenue[]> {
-  const start = new Date(Date.UTC(year, 0, 1));
-  const end = new Date(Date.UTC(year + 1, 0, 1));
-  const [entered, projects] = await Promise.all([
-    db.revenueMonth.findMany({ where: { companyId, year } }),
-    db.project.findMany({
-      where: {
-        companyId,
-        stage: { in: WON_STAGES },
-        estimatedValue: { not: null },
-        OR: [{ closedAt: { gte: start, lt: end } }, { closedAt: null, moveDate: { gte: start, lt: end } }],
-      },
-      select: { closedAt: true, moveDate: true, estimatedValue: true },
-    }),
+export type MonthRevenue = { month: number; amount: number; source: "POWERBI" | "PASTE" | "UPLOAD" | "TYPED" | null };
+export type Line = { name: string; months: MonthRevenue[] };
+
+export async function revenueLines(companyId: string, names: string[], year: number): Promise<Line[]> {
+  const [entries, pbi] = await Promise.all([
+    db.revenueEntry.findMany({ where: { companyId, year, series: { in: names } } }),
+    db.powerBiRevenue.findMany({ where: { companyId, year, series: { in: names } } }),
   ]);
-  const won = Array.from({ length: 12 }, () => ({ amount: 0, projects: 0 }));
-  for (const p of projects) {
-    const m = (p.closedAt ?? p.moveDate)!.getUTCMonth();
-    won[m].amount += p.estimatedValue ?? 0;
-    won[m].projects++;
-  }
-  return won.map((w, i) => {
-    const typed = entered.find((e) => e.month === i + 1);
-    return typed
-      ? { month: i + 1, amount: typed.amount, source: typed.source as MonthRevenue["source"], projects: 0 }
-      : { month: i + 1, amount: w.amount, source: "DEALS" as const, projects: w.projects };
-  });
+  return names.map((name) => ({
+    name,
+    months: MONTHS.map((_, i) => {
+      const e = entries.find((r) => r.series === name && r.month === i + 1);
+      if (e) return { month: i + 1, amount: e.amount, source: e.source as MonthRevenue["source"] };
+      const p = pbi.find((r) => r.series === name && r.month === i + 1);
+      return p ? { month: i + 1, amount: p.amount, source: "POWERBI" as const } : { month: i + 1, amount: 0, source: null };
+    }),
+  }));
+}
+
+// The total of several lines, month by month.
+export function totalLine(name: string, lines: Line[]): Line {
+  return {
+    name,
+    months: MONTHS.map((_, i) => {
+      const ms = lines.map((l) => l.months[i]);
+      return { month: i + 1, amount: ms.reduce((s, m) => s + m.amount, 0), source: ms.find((m) => m.source)?.source ?? null };
+    }),
+  };
 }
 
 export type Change = { amount: number; percent: number | null };
@@ -61,18 +63,4 @@ export function parseDollars(text: string): number | null {
   if (!m) return NaN;
   const n = Number(m[1]) * (m[2] === "k" ? 1_000 : m[2] === "m" ? 1_000_000 : 1);
   return Math.round(n);
-}
-
-// Each Power BI revenue line's months for a year, in the order set in Settings > Power BI.
-export async function powerBiLines(companyId: string, names: string[], year: number): Promise<{ name: string; months: MonthRevenue[] }[]> {
-  const rows = await db.powerBiRevenue.findMany({ where: { companyId, year, series: { in: names } } });
-  return names.map((name) => ({
-    name,
-    months: MONTHS.map((_, i) => ({
-      month: i + 1,
-      amount: rows.find((r) => r.series === name && r.month === i + 1)?.amount ?? 0,
-      source: "POWERBI" as const,
-      projects: 0,
-    })),
-  }));
 }

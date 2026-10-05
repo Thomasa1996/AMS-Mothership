@@ -253,8 +253,8 @@ model VendorRating {
   @@index([companyId])
 }
 
-// Revenue a company booked in one month, from an uploaded export or typed in by an admin on
-// Revenue > Year over year. Whole dollars. Overrides the figure from won projects.
+// No longer used: replaced by RevenueEntry, which keeps each revenue line separately. Kept so the
+// deploy's db push doesn't drop the table.
 model RevenueMonth {
   id        String   @id @default(cuid())
   companyId String
@@ -268,7 +268,23 @@ model RevenueMonth {
   @@unique([companyId, year, month])
 }
 
-// One month of one revenue line (such as "Commercial Revenue") read from Power BI. Whole dollars.
+// One month of one revenue line (such as "Actual Rev"), pasted, uploaded or typed in by an admin on
+// Revenue > Year over year. Whole dollars. Overrides the Power BI figure for that line and month.
+model RevenueEntry {
+  id        String   @id @default(cuid())
+  companyId String
+  series    String
+  year      Int
+  month     Int // 1-12
+  amount    Int
+  // PASTE, UPLOAD or TYPED.
+  source    String   @default("TYPED")
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, series, year, month])
+}
+
+// One month of one revenue line (such as "Actual Rev") read from Power BI. Whole dollars.
 // Replaced in full on every read.
 model PowerBiRevenue {
   id        String @id @default(cuid())

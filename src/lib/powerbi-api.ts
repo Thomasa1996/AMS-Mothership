@@ -13,8 +13,8 @@ export type PowerBiCreds = { tenantId: string; clientId: string; secret: string 
 export type RevenueSeries = { name: string; amount: string };
 export type RevenueSource = { groupId: string; datasetId: string; dateColumn: string; series: RevenueSeries[] };
 
-// The revenue lines Thomas tracks in Power BI, offered first when setting up.
-export const DEFAULT_SERIES = ["Commercial Revenue", "Actual Rev", "Corporate Revenue"];
+// The revenue lines Thomas tracks in Power BI (types under Commercial Revenue), offered first when setting up.
+export const DEFAULT_SERIES = ["Actual Rev", "Corporate Account"];
 
 export function parseRevenueSource(raw: string | null): RevenueSource | null {
   if (!raw) return null;
