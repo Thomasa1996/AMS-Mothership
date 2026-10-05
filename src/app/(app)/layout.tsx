@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { roleLabel } from "@/lib/constants";
 import { logout } from "@/app/login/actions";
+import { endRepPreview } from "./preview-actions";
 import { Logo } from "@/components/logo";
 import { backgroundUrl, photoUrl } from "@/lib/photos";
 import { MainNav } from "@/components/main-nav";
@@ -46,6 +47,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </header>
+      {user.previewing && (
+        <div className="bg-[#f59e0b] text-[#1c1917] print:hidden">
+          <form action={endRepPreview} className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm">
+            <span>
+              <b>Previewing as a sales rep.</b> You see your own accounts, and admin tabs and settings are hidden, exactly as a rep would.
+            </span>
+            <button className="rounded-md bg-[#1c1917] px-3 py-1 font-medium text-white hover:bg-black">Exit preview</button>
+          </form>
+        </div>
+      )}
       <main className="mx-auto max-w-7xl px-4 py-6 print:max-w-none print:p-0">{children}</main>
     </div>
   );
