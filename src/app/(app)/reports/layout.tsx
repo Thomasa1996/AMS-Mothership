@@ -12,7 +12,7 @@ export default async function RevenueLayout({ children }: { children: React.Reac
       <PageHeader title="Revenue" subtitle="Only admins can see this tab." />
       <SubNav
         items={[
-          { href: "/reports", label: "Power BI reports", exact: true },
+          { href: "/reports", label: "Commercial Sales Team Report", exact: true },
           { href: "/reports/reps", label: "Sales reps" },
         ]}
       />
