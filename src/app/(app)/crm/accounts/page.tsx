@@ -33,7 +33,12 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
       },
       orderBy: { updatedAt: "desc" },
     }),
-    db.user.findMany({ where: { companyId: user.companyId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    // Only teammates who own a company are worth filtering on.
+    db.user.findMany({
+      where: { companyId: user.companyId, id: { not: user.id }, ownedAccounts: { some: {} } },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
   // HubSpot owners with no Mothership login yet still own their companies, so they can be filtered on too.
   const hubspotOwners = limitedToOwn(user)
@@ -63,13 +68,9 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
             {users.map((u) => (
               <option key={u.id} value={u.id}>{u.name}</option>
             ))}
-            {hubspotOwners.length > 0 && (
-              <optgroup label="HubSpot owners (no Mothership login yet)">
-                {hubspotOwners.map((n) => (
-                  <option key={n} value={`hs:${n}`}>{n} (HubSpot)</option>
-                ))}
-              </optgroup>
-            )}
+            {hubspotOwners.map((n) => (
+              <option key={n} value={`hs:${n}`}>{n} (HubSpot)</option>
+            ))}
           </select>
         )}
         <button className="btn">Filter</button>
