@@ -58,7 +58,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
       </div>
       <form className="mb-4 flex flex-wrap items-center gap-2">
         {status && <input type="hidden" name="status" value={status} />}
-        <input className="input max-w-xs" name="q" defaultValue={q} placeholder="Search quotes, projects, accounts" />
+        <input className="input max-w-xs" name="q" defaultValue={q} placeholder="Search quotes, projects, companies" />
         {!limitedToOwn(user) && (
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" name="mine" value="1" defaultChecked={!!mine} /> Only mine
@@ -75,7 +75,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
               <tr>
                 <th>#</th>
                 <th>Quote</th>
-                <th>Account</th>
+                <th>Company</th>
                 <th>Status</th>
                 <th>Date</th>
                 <th>Prepared by</th>

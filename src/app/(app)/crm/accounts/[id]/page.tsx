@@ -58,7 +58,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
               <h2 className="font-semibold">Projects</h2>
             </div>
             {account.projects.length === 0 ? (
-              <EmptyState>No projects for this account yet.</EmptyState>
+              <EmptyState>No projects for this company yet.</EmptyState>
             ) : (
               <table className="table">
                 <thead>
@@ -107,7 +107,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
               </div>
             </dl>
             <details className="mt-4">
-              <summary className="cursor-pointer text-sm font-medium text-brand-600">Edit account</summary>
+              <summary className="cursor-pointer text-sm font-medium text-brand-600">Edit company</summary>
               <div className="mt-3">
                 <AccountForm
                   action={updateAccount.bind(null, account.id)}
@@ -119,7 +119,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
               <div className="mt-4 border-t border-slate-100 pt-4">
                 <ConfirmButton
                   action={deleteAccount.bind(null, account.id)}
-                  label="Delete account"
+                  label="Delete company"
                   confirmText={`Delete ${account.name} and all its contacts, projects and activity?`}
                 />
               </div>

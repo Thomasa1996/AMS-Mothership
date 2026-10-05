@@ -28,7 +28,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
         actions={<Link href="/crm/projects/new" className="btn btn-primary">New project</Link>}
       />
       <form className="mb-4 flex flex-wrap gap-2">
-        <input className="input max-w-xs" name="q" defaultValue={q} placeholder="Search projects or accounts" />
+        <input className="input max-w-xs" name="q" defaultValue={q} placeholder="Search projects or companies" />
         <select className="input w-auto" name="stage" defaultValue={stage}>
           <option value="">All stages</option>
           {STAGES.map((s) => (
@@ -45,7 +45,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
             <thead>
               <tr>
                 <th>Project</th>
-                <th>Account</th>
+                <th>Company</th>
                 <th>Stage</th>
                 <th>Move date</th>
                 <th>Manager</th>

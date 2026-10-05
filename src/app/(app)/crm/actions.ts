@@ -30,7 +30,7 @@ async function assertUserInCompany(userId: string | null, companyId: string) {
 
 async function getAccountOrThrow(accountId: string, user: User) {
   const account = await db.account.findFirst({ where: { id: accountId, ...accountScope(user) } });
-  if (!account) throw new Error("Account not found");
+  if (!account) throw new Error("Company not found");
   return account;
 }
 
@@ -43,7 +43,7 @@ async function getProjectOrThrow(projectId: string, user: User) {
 // Salespeople can't hand accounts to someone else; only admins reassign owners.
 function ownerFor(requested: string | null | undefined, user: User) {
   if (limitedToOwn(user)) {
-    if (requested && requested !== user.id) throw new Error("Only an admin can give an account to someone else");
+    if (requested && requested !== user.id) throw new Error("Only an admin can give a company to someone else");
     return user.id;
   }
   return requested ?? user.id;

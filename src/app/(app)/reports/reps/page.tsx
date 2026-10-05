@@ -54,7 +54,7 @@ export default async function SalesRepsPage() {
           <thead>
             <tr>
               <th>Rep</th>
-              <th className="text-right">Accounts</th>
+              <th className="text-right">Companies</th>
               <th className="text-right">Open pipeline</th>
               <th className="text-right">Quotes sent</th>
               <th className="text-right">Won</th>

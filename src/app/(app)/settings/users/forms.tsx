@@ -53,7 +53,7 @@ export function RemoveUserButton({ user, teammates, defaultHandTo }: { user: { i
         Remove <b>{user.name}</b>? They won&apos;t be able to sign in. Their notes and quotes stay.
       </p>
       <label className="flex flex-wrap items-center gap-2">
-        {user.accounts ? `Hand their ${user.accounts} accounts, projects and lists to` : "Hand their projects and lists to"}
+        {user.accounts ? `Hand their ${user.accounts} companies, projects and lists to` : "Hand their projects and lists to"}
         <select className="input w-auto py-1" value={handTo} onChange={(e) => setHandTo(e.target.value)}>
           {teammates.filter((t) => t.id !== user.id).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>

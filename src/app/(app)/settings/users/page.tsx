@@ -59,7 +59,7 @@ export default async function UsersPage() {
       {removed.length > 0 && (
         <section className="card p-5">
           <h2 className="mb-1 font-semibold">Removed</h2>
-          <p className="mb-3 text-sm text-slate-500">These people can&apos;t sign in. Restore someone to let them back in; their old accounts stay with whoever took them over.</p>
+          <p className="mb-3 text-sm text-slate-500">These people can&apos;t sign in. Restore someone to let them back in; their old companies stay with whoever took them over.</p>
           <ul className="divide-y divide-slate-100">
             {removed.map((u) => (
               <li key={u.id} className="flex items-center justify-between gap-3 py-2 text-sm">

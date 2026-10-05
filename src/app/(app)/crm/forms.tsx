@@ -77,9 +77,9 @@ export function AccountForm({
   return (
     <form ref={ref} onSubmit={onSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Input label="Account name" name="name" defaultValue={defaults.name} required placeholder="e.g. Hartwell & Lowe LLP" />
+        <Input label="Company name" name="name" defaultValue={defaults.name} required placeholder="e.g. Hartwell & Lowe LLP" />
         <Select
-          label="Account owner"
+          label="Company owner"
           name="ownerId"
           defaultValue={defaults.ownerId}
           options={users.map((u) => ({ value: u.id, label: u.name }))}
@@ -162,11 +162,11 @@ export function ProjectForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <Input label="Project name" name="name" defaultValue={defaults.name} required placeholder="e.g. HQ relocation, floors 4-6" />
         <Select
-          label="Account"
+          label="Company"
           name="accountId"
           defaultValue={defaults.accountId}
           options={accounts.map((a) => ({ value: a.id, label: a.name }))}
-          blank="Choose an account"
+          blank="Choose a company"
         />
         <Select
           label="Stage"
