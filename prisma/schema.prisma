@@ -43,6 +43,15 @@ model Company {
   smartsheetImportResult String?
   // Apollo API key (sealed) for Sales, New Business Development.
   apolloKey          String?
+  // Power BI live connection (Settings > Power BI): an Azure app (service principal) that reads the
+  // revenue dataset for Revenue > Year over year. The secret is sealed. powerbiRevenue is JSON
+  // { groupId, datasetId, dateColumn, series: [{ name, amount }] } naming what to read; see lib/powerbi-api.ts.
+  powerbiTenantId    String?
+  powerbiClientId    String?
+  powerbiSecret      String?
+  powerbiRevenue     String?
+  powerbiSyncedAt    DateTime?
+  powerbiSyncResult  String?
   rateCardNotes              String?
 
   users      User[]
@@ -244,17 +253,32 @@ model VendorRating {
   @@index([companyId])
 }
 
-// Revenue a company booked in one month of a past year, typed in by an admin on Revenue > Year over year
-// for months before Mothership has its own data. Whole dollars. Overrides the figure from won projects.
+// Revenue a company booked in one month, from an uploaded export or typed in by an admin on
+// Revenue > Year over year. Whole dollars. Overrides the figure from won projects.
 model RevenueMonth {
   id        String   @id @default(cuid())
   companyId String
   year      Int
   month     Int // 1-12
   amount    Int
+  // TYPED (entered on the page) or UPLOAD (from an exported file).
+  source    String   @default("TYPED")
   updatedAt DateTime @updatedAt
 
   @@unique([companyId, year, month])
+}
+
+// One month of one revenue line (such as "Commercial Revenue") read from Power BI. Whole dollars.
+// Replaced in full on every read.
+model PowerBiRevenue {
+  id        String @id @default(cuid())
+  companyId String
+  series    String
+  year      Int
+  month     Int // 1-12
+  amount    Int
+
+  @@unique([companyId, series, year, month])
 }
 
 // The company's standard prices (the rate sheet), used to fill quote lines so every rep

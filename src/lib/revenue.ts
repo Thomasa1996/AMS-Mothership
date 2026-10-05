@@ -1,13 +1,14 @@
 import { db } from "./db";
 import { WON_STAGES } from "./constants";
 
-// Revenue by month for Revenue > Year over year. A month's figure is the total an admin typed in
-// for it, when there is one; otherwise the value of projects won that month (by close date, or
+// Revenue by month for Revenue > Year over year. A month's figure is the stored total (from Power BI,
+// an uploaded export, or typed in), when there is one; otherwise the value of projects won that month (by close date, or
 // move date when a project has no close date).
 
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-export type MonthRevenue = { month: number; amount: number; entered: boolean; projects: number };
+// source: POWERBI, UPLOAD or TYPED for a stored month; DEALS when added up from won projects.
+export type MonthRevenue = { month: number; amount: number; source: "POWERBI" | "UPLOAD" | "TYPED" | "DEALS"; projects: number };
 
 export async function monthlyRevenue(companyId: string, year: number): Promise<MonthRevenue[]> {
   const start = new Date(Date.UTC(year, 0, 1));
@@ -32,7 +33,9 @@ export async function monthlyRevenue(companyId: string, year: number): Promise<M
   }
   return won.map((w, i) => {
     const typed = entered.find((e) => e.month === i + 1);
-    return typed ? { month: i + 1, amount: typed.amount, entered: true, projects: 0 } : { month: i + 1, amount: w.amount, entered: false, projects: w.projects };
+    return typed
+      ? { month: i + 1, amount: typed.amount, source: typed.source as MonthRevenue["source"], projects: 0 }
+      : { month: i + 1, amount: w.amount, source: "DEALS" as const, projects: w.projects };
   });
 }
 
@@ -58,4 +61,18 @@ export function parseDollars(text: string): number | null {
   if (!m) return NaN;
   const n = Number(m[1]) * (m[2] === "k" ? 1_000 : m[2] === "m" ? 1_000_000 : 1);
   return Math.round(n);
+}
+
+// Each Power BI revenue line's months for a year, in the order set in Settings > Power BI.
+export async function powerBiLines(companyId: string, names: string[], year: number): Promise<{ name: string; months: MonthRevenue[] }[]> {
+  const rows = await db.powerBiRevenue.findMany({ where: { companyId, year, series: { in: names } } });
+  return names.map((name) => ({
+    name,
+    months: MONTHS.map((_, i) => ({
+      month: i + 1,
+      amount: rows.find((r) => r.series === name && r.month === i + 1)?.amount ?? 0,
+      source: "POWERBI" as const,
+      projects: 0,
+    })),
+  }));
 }

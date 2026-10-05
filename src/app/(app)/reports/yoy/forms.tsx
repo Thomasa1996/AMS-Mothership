@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useFormAction } from "@/lib/use-form-action";
 import type { FormState } from "@/lib/validation";
 import { MONTHS } from "@/lib/revenue";
-import { saveRevenueMonths } from "./actions";
+import { saveRevenueMonths, uploadRevenueFile, type UploadState } from "./actions";
 
 // Twelve monthly totals for one year. Pasting a column of 12 numbers (from Excel) into any box fills the rest.
 export function RevenueMonthsForm({ years, values }: { years: number[]; values: Record<number, (number | null)[]> }) {
@@ -57,6 +57,22 @@ export function RevenueMonthsForm({ years, values }: { years: number[]; values: 
         {state.error && <p className="text-sm text-red-600">{state.error}</p>}
         {state.ok && <p className="text-sm text-emerald-600">Saved</p>}
       </div>
+    </form>
+  );
+}
+
+export function UploadRevenueForm() {
+  const { state, onSubmit, pending, ref } = useFormAction<UploadState>(uploadRevenueFile, {}, { resetOnSuccess: true });
+  const router = useRouter();
+  useEffect(() => {
+    if (state.ok) router.refresh();
+  }, [state, router]);
+  return (
+    <form ref={ref} onSubmit={onSubmit} className="flex flex-wrap items-center gap-3">
+      <input className="input max-w-sm" name="file" type="file" accept=".xlsx,.csv" required />
+      <button className="btn btn-primary" disabled={pending}>{pending ? "Reading..." : "Upload"}</button>
+      {state.error && <span className="text-sm text-red-600">{state.error}</span>}
+      {state.ok && <span className="text-sm text-emerald-600">{state.message}</span>}
     </form>
   );
 }
