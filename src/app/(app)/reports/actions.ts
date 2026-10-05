@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { parseEmbedUrl } from "@/lib/powerbi";
+import { parseRepReportUrl } from "@/lib/rep-report";
 import { firstError, formToObject, type FormState } from "@/lib/validation";
 
 async function requireAdmin() {
@@ -38,4 +39,16 @@ export async function removeReport(id: string) {
   const admin = await requireAdmin();
   await db.powerBiReport.deleteMany({ where: { id, companyId: admin.companyId } });
   revalidatePath("/reports");
+}
+
+// Saves (or clears, when blank) the SharePoint or Power BI link for one rep's own report.
+export async function saveRepReport(userId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requireAdmin();
+  const raw = String(formData.get("link") ?? "").trim();
+  const url = raw ? parseRepReportUrl(raw) : null;
+  if (raw && !url) return { error: "Paste a SharePoint, OneDrive or Power BI link (it should start with https://)." };
+  const res = await db.user.updateMany({ where: { id: userId, companyId: admin.companyId }, data: { repReportUrl: url } });
+  if (!res.count) return { error: "That person isn't on the team" };
+  revalidatePath("/reports/reps", "layout");
+  return { ok: true };
 }

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { isPublicLink } from "@/lib/powerbi";
@@ -22,16 +21,13 @@ const READER_SQL = [
 // Reports are admins only for now.
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ r?: string }> }) {
   const user = await requireUser();
-  if (user.role !== "ADMIN") redirect("/crm/accounts");
   const { r } = await searchParams;
   const reports = await db.powerBiReport.findMany({ where: { companyId: user.companyId }, orderBy: { position: "asc" } });
   const current = reports.find((x) => x.id === r) ?? reports[0] ?? null;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Revenue" subtitle="Power BI reports. Only admins can see this tab." />
-
-      {current ? (
+            {current ? (
         <section className="space-y-3">
           {reports.length > 1 && (
             <div className="flex flex-wrap gap-2">
@@ -94,7 +90,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <ol className="list-decimal space-y-1 pl-5">
             <li>Open the report in Power BI (app.powerbi.com).</li>
             <li>Click File, then Embed report, then Website or portal.</li>
-            <li>Copy the first link and paste it above. The link from your browserCopy the first link and paste it above. Viewers sign in with Microsoft, so the report stays private.apos;s address bar while viewing the report works too. Viewers sign in with Microsoft, so the report stays private.</li>
+            <li>Copy the first link and paste it above. The link from your browser&apos;s address bar while viewing the report works too. Viewers sign in with Microsoft, so the report stays private.</li>
           </ol>
         </div>
       </section>

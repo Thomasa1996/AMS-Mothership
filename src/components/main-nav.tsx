@@ -33,12 +33,13 @@ export function MainNav({ admin }: { admin: boolean }) {
   );
 }
 
-export function SubNav({ items }: { items: { href: string; label: string }[] }) {
+// exact: only highlight on that page itself, for a tab whose address is the start of its siblings'.
+export function SubNav({ items }: { items: { href: string; label: string; exact?: boolean }[] }) {
   const pathname = usePathname();
   return (
     <div className="flex gap-4 overflow-x-auto border-b border-slate-200 print:hidden">
       {items.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        const active = pathname === item.href || (!item.exact && pathname.startsWith(`${item.href}/`));
         return (
           <Link
             key={item.href}

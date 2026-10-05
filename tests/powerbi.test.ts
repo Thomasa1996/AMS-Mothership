@@ -28,3 +28,20 @@ describe("parseEmbedUrl", () => {
     expect(isPublicLink(link)).toBe(false);
   });
 });
+
+describe("sales rep report links", async () => {
+  const { canEmbed, parseRepReportUrl } = await import("@/lib/rep-report");
+  it("accepts SharePoint links and embed code, and rejects other sites", () => {
+    expect(parseRepReportUrl("https://applemoving.sharepoint.com/:x:/s/Sales/EabC123?e=xyz")).toBe("https://applemoving.sharepoint.com/:x:/s/Sales/EabC123?e=xyz");
+    expect(parseRepReportUrl('<iframe width="402" src="https://applemoving.sharepoint.com/sites/Sales/_layouts/15/Doc.aspx?sourcedoc={abc}&amp;action=embedview"></iframe>')).toBe(
+      "https://applemoving.sharepoint.com/sites/Sales/_layouts/15/Doc.aspx?sourcedoc={abc}&action=embedview",
+    );
+    expect(parseRepReportUrl("https://evil.example.com/sharepoint.com")).toBeNull();
+    expect(parseRepReportUrl("http://applemoving.sharepoint.com/x")).toBeNull();
+  });
+  it("embeds only links Microsoft allows in other sites", () => {
+    expect(canEmbed("https://applemoving.sharepoint.com/sites/Sales/_layouts/15/Doc.aspx?sourcedoc={abc}&action=embedview")).toBe(true);
+    expect(canEmbed("https://applemoving.sharepoint.com/:x:/s/Sales/EabC123?e=xyz")).toBe(false);
+    expect(canEmbed(parseRepReportUrl("https://app.powerbi.com/reportEmbed?reportId=558bf078-de8e-4068-8cb0-cfab8318b72e&autoAuth=true")!)).toBe(true);
+  });
+});

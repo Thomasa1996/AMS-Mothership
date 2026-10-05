@@ -2,7 +2,7 @@
 
 import type { FormState } from "@/lib/validation";
 import { useFormAction } from "@/lib/use-form-action";
-import { addReport } from "./actions";
+import { addReport, saveRepReport } from "./actions";
 
 export function AddReportForm() {
   const { state, onSubmit, pending, ref } = useFormAction<FormState>(addReport, {}, { resetOnSuccess: true });
@@ -23,6 +23,21 @@ export function AddReportForm() {
         {state.error && <span className="text-sm text-red-600">{state.error}</span>}
         {state.ok && <span className="text-sm text-emerald-600">Added.</span>}
       </div>
+    </form>
+  );
+}
+
+export function RepReportForm({ userId, current }: { userId: string; current: string | null }) {
+  const { state, onSubmit, pending } = useFormAction<FormState>(saveRepReport.bind(null, userId), {});
+  return (
+    <form onSubmit={onSubmit} className="space-y-2">
+      <label className="label" htmlFor={`link-${userId}`}>{current ? "Change the SharePoint link" : "SharePoint link to this rep's report"}</label>
+      <div className="flex flex-wrap gap-2">
+        <input className="input min-w-0 flex-1" id={`link-${userId}`} name="link" defaultValue={current ?? ""} placeholder="https://applemoving.sharepoint.com/..." />
+        <button className="btn btn-primary" disabled={pending}>{pending ? "Saving..." : "Save"}</button>
+      </div>
+      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state.ok && <p className="text-sm text-emerald-600">Saved.</p>}
     </form>
   );
 }
