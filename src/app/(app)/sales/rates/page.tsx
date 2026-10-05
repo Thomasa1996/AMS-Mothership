@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui";
 import { ConfirmButton } from "@/app/(app)/crm/forms";
 import { removeRateSheet } from "./actions";
 import { RateSheetUpload } from "./rate-sheet-form";
+import { BulkRateSheetUpload } from "./bulk-upload";
 
 const day = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "America/New_York" });
 
@@ -70,6 +71,7 @@ export default async function RateCardPage({ searchParams }: { searchParams: Pro
           </div>
         </section>
       )}
+      {admin && branches.length > 0 && <BulkRateSheetUpload markets={branches} />}
       <div className="columns-1 gap-6 lg:columns-2">
         {categories.map((category) => (
           <section key={category} className="card mb-6 break-inside-avoid">

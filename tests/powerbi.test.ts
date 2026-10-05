@@ -45,3 +45,16 @@ describe("sales rep report links", async () => {
     expect(canEmbed(parseRepReportUrl("https://app.powerbi.com/reportEmbed?reportId=558bf078-de8e-4068-8cb0-cfab8318b72e&autoAuth=true")!)).toBe(true);
   });
 });
+
+import { marketForFile } from "@/lib/rate-sheet-match";
+
+describe("rate sheet file names", () => {
+  const markets = [{ name: "El Paso" }, { name: "Columbus, GA" }, { name: "San Antonio" }, { name: "Ft. Walton Beach" }, { name: "Del Rio" }];
+  it("finds the market a file names", () => {
+    expect(marketForFile("2026 Commercial Rate Sheet - El Paso.pdf", markets)?.name).toBe("El Paso");
+    expect(marketForFile("2026 Commercial Rate Sheet - Columbus.pdf", markets)?.name).toBe("Columbus, GA");
+    expect(marketForFile("rate sheet ft walton beach.PDF", markets)?.name).toBe("Ft. Walton Beach");
+    expect(marketForFile("Standard rate sheet.pdf", markets)).toBeNull();
+    expect(marketForFile("Paso Robles.pdf", markets)).toBeNull();
+  });
+});
