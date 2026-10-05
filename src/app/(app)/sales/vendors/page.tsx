@@ -4,12 +4,14 @@ import { requireUser } from "@/lib/auth";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { MISSING_COMPANY } from "@/lib/constants";
 import { VerificationBadge } from "./status-badge";
+import { GradeBadge } from "./grade-badge";
+import { GRADES, GRADE_FLOOR, summarize, type Grade } from "@/lib/vendor-grade";
 
-type Search = { q?: string; category?: string; state?: string; status?: string };
+type Search = { q?: string; category?: string; state?: string; status?: string; grade?: string; sort?: string };
 
 export default async function VendorsPage({ searchParams }: { searchParams: Promise<Search> }) {
   const user = await requireUser();
-  const { q = "", category = "", state = "", status = "" } = await searchParams;
+  const { q = "", category = "", state = "", status = "", grade = "", sort = "" } = await searchParams;
 
   const where = {
     companyId: user.companyId,
@@ -29,7 +31,7 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
       : {}),
   };
 
-  const [vendors, categories, states, statuses, total] = await Promise.all([
+  const [allVendors, categories, states, statuses, total, ratings] = await Promise.all([
     db.vendor.findMany({ where, orderBy: [{ category: "asc" }, { position: "asc" }, { name: "asc" }] }),
     db.vendor.groupBy({ by: ["category"], where: { companyId: user.companyId }, _count: true, orderBy: { category: "asc" } }),
     db.vendor.groupBy({ by: ["state"], where: { companyId: user.companyId, state: { not: null } }, orderBy: { state: "asc" } }),
@@ -39,10 +41,26 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
       orderBy: { verificationStatus: "asc" },
     }),
     db.vendor.count({ where: { companyId: user.companyId } }),
+    db.vendorRating.findMany({
+      where: { companyId: user.companyId },
+      select: { vendorId: true, quality: true, timeliness: true, pricing: true, communication: true },
+    }),
   ]);
 
+  const byVendor = new Map<string, typeof ratings>();
+  for (const r of ratings) byVendor.set(r.vendorId, [...(byVendor.get(r.vendorId) ?? []), r]);
+  const scores = new Map([...byVendor].map(([id, rs]) => [id, summarize(rs)!]));
+  const gradeFilter = (GRADES as readonly string[]).includes(grade) ? (grade as Grade) : null;
+  let vendors = allVendors;
+  if (grade === "none") vendors = vendors.filter((v) => !scores.has(v.id));
+  else if (gradeFilter) vendors = vendors.filter((v) => (scores.get(v.id)?.average ?? -1) >= GRADE_FLOOR[gradeFilter]);
+  if (sort === "grade") {
+    // Best graded first; unrated vendors keep their file order at the end.
+    vendors = [...vendors].sort((a, b) => (scores.get(b.id)?.average ?? -1) - (scores.get(a.id)?.average ?? -1));
+  }
+
   const link = (next: Partial<Search>) => {
-    const params = new URLSearchParams({ q, category, state, status, ...next } as Record<string, string>);
+    const params = new URLSearchParams({ q, category, state, status, grade, sort, ...next } as Record<string, string>);
     for (const [k, v] of [...params.entries()]) if (!v) params.delete(k);
     const s = params.toString();
     return `/sales/vendors${s ? `?${s}` : ""}`;
@@ -96,8 +114,22 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
                 <option key={s.verificationStatus} value={s.verificationStatus ?? ""}>{s.verificationStatus}</option>
               ))}
             </select>
+            <select className="input w-auto" name="grade" defaultValue={grade}>
+              <option value="">Any grade</option>
+              <option value="A">A only</option>
+              <option value="B">B or better</option>
+              <option value="C">C or better</option>
+              <option value="D">D or better</option>
+              <option value="none">Not rated yet</option>
+            </select>
+            <select className="input w-auto" name="sort" defaultValue={sort}>
+              <option value="">File order</option>
+              <option value="grade">Best grade first</option>
+            </select>
             <button className="btn">Filter</button>
-            {(q || state || status) && <Link href={link({ q: "", state: "", status: "" })} className="btn">Clear</Link>}
+            {(q || state || status || grade || sort) && (
+              <Link href={link({ q: "", state: "", status: "", grade: "", sort: "" })} className="btn">Clear</Link>
+            )}
           </form>
           <div className="card overflow-x-auto">
             {vendors.length === 0 ? (
@@ -115,6 +147,7 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
                     <th>Phone</th>
                     <th>Email</th>
                     <th>Status</th>
+                    <th>Grade</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -132,6 +165,17 @@ export default async function VendorsPage({ searchParams }: { searchParams: Prom
                       <td className="whitespace-nowrap">{v.phone}</td>
                       <td>{v.email && <a href={`mailto:${v.email}`} className="text-brand-600 hover:underline">{v.email}</a>}</td>
                       <td><VerificationBadge status={v.verificationStatus} /></td>
+                      <td className="whitespace-nowrap">
+                        {(() => {
+                          const sc = scores.get(v.id);
+                          return (
+                            <span className="flex items-center gap-1.5">
+                              <GradeBadge grade={sc?.grade ?? null} title={sc ? `${sc.average.toFixed(1)} of 5` : undefined} />
+                              {sc && <span className="text-xs text-slate-500">({sc.count})</span>}
+                            </span>
+                          );
+                        })()}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

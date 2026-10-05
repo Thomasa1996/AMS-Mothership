@@ -90,6 +90,7 @@ model User {
   activities      Activity[]
   quotes          Quote[]
   prospectLists   ProspectList[]
+  vendorRatings   VendorRating[]
 }
 
 model Account {
@@ -215,8 +216,30 @@ model Vendor {
   notes              String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+  ratings            VendorRating[]
 
   @@index([companyId, category])
+}
+
+// One teammate's grade of a vendor: each criterion is scored 1 (poor) to 5 (excellent).
+// The vendor's letter grade is the average across everyone's ratings (see lib/vendor-grade.ts).
+model VendorRating {
+  id            String   @id @default(cuid())
+  companyId     String
+  vendorId      String
+  vendor        Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quality       Int
+  timeliness    Int
+  pricing       Int
+  communication Int
+  comment       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([vendorId, userId])
+  @@index([companyId])
 }
 
 // The company's standard prices (the rate sheet), used to fill quote lines so every rep
