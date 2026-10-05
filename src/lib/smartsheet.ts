@@ -84,3 +84,8 @@ export function sheetTable(sheet: Sheet) {
   });
   return { columns: columns.map((c) => ({ title: c.title, primary: !!c.primary })), rows };
 }
+
+export async function getColumns(token: string, region: string, sheetId: string) {
+  const res = await request<{ data: SheetColumn[] }>(token, region, `/sheets/${encodeURIComponent(sheetId)}/columns?includeAll=true`);
+  return res.data.sort((a, b) => a.index - b.index);
+}

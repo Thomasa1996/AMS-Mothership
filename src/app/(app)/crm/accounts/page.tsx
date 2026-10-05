@@ -1,3 +1,4 @@
+import { sourceLabel } from "@/lib/constants";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
@@ -98,7 +99,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
                   <tr key={a.id} className="hover:bg-slate-50">
                     <td>
                       <Link href={`/crm/accounts/${a.id}`} className="link">{a.name}</Link>
-                      {a.source !== "MANUAL" && <span className="ml-2 badge bg-slate-100 text-slate-600">{a.source === "APOLLO" ? "Apollo" : "HubSpot"}</span>}
+                      {a.source !== "MANUAL" && <span className="ml-2 badge bg-slate-100 text-slate-600">{sourceLabel(a.source)}</span>}
                     </td>
                     <td className="text-slate-600">{a.industry}</td>
                     <td className="text-slate-600">

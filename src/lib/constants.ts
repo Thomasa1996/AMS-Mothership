@@ -41,7 +41,10 @@ export const ACCOUNT_SOURCES = [
   { id: "MANUAL", label: "Manual" },
   { id: "APOLLO", label: "Apollo" },
   { id: "HUBSPOT", label: "HubSpot" },
+  { id: "SMARTSHEET", label: "Smartsheet" },
 ] as const;
+
+export const sourceLabel = (id: string) => ACCOUNT_SOURCES.find((s) => s.id === id)?.label ?? id;
 
 export const INDUSTRIES = [
   "Corporate office",

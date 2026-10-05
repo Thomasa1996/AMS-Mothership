@@ -37,6 +37,10 @@ model Company {
   smartsheetRegion   String  @default("us")
   // JSON array of sheet ids shown under Sales > Project management; empty or null shows every sheet.
   smartsheetSheetIds String?
+  // Smartsheet sheet whose rows become CRM projects: JSON { sheetId, columns: { field: columnId } }.
+  smartsheetImport       String?
+  smartsheetImportedAt   DateTime?
+  smartsheetImportResult String?
   // Apollo API key (sealed) for Sales, New Business Development.
   apolloKey          String?
   rateCardNotes              String?
@@ -156,6 +160,8 @@ model Project {
   notes              String?
   hubspotId          String?
   hubspotModifiedAt  DateTime?
+  // Row this project was imported from, in the company's Smartsheet project sheet.
+  smartsheetRowId    String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -163,6 +169,7 @@ model Project {
   quotes     Quote[]
 
   @@index([companyId, hubspotId])
+  @@index([companyId, smartsheetRowId])
   @@index([companyId, stage])
 }
 

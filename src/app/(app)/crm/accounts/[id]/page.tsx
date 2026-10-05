@@ -1,3 +1,4 @@
+import { sourceLabel } from "@/lib/constants";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
@@ -100,7 +101,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
             <dl className="grid grid-cols-2 gap-3">
               <Field label="Phone">{account.phone}</Field>
               <Field label="Website">{account.website}</Field>
-              <Field label="Source">{account.source === "MANUAL" ? "Manual" : account.source === "APOLLO" ? "Apollo" : "HubSpot"}</Field>
+              <Field label="Source">{sourceLabel(account.source)}</Field>
               <Field label="Created">{formatDate(account.createdAt)}</Field>
               <div className="col-span-2">
                 <Field label="Address">{account.address}</Field>
