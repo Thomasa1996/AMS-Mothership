@@ -55,4 +55,11 @@ describe("contacts with no linked company", () => {
     expect(fallbackAccountName(contact(null))).toBe(NO_COMPANY_ACCOUNT);
     expect(fallbackAccountName(contact("  "))).toBe(NO_COMPANY_ACCOUNT);
   });
+  it("treat Salesforce IDs typed as the company as no company", () => {
+    expect(fallbackAccountName(contact("001bn00000rjErVAAU"))).toBe(NO_COMPANY_ACCOUNT);
+    expect(fallbackAccountName(contact("001Pd00000zh8zFIAQ"))).toBe(NO_COMPANY_ACCOUNT);
+    expect(fallbackAccountName(contact("000000000000000AAA"))).toBe(NO_COMPANY_ACCOUNT);
+    expect(fallbackAccountName(contact("Price Modern"))).toBe("Price Modern");
+    expect(fallbackAccountName(contact("3M"))).toBe("3M");
+  });
 });

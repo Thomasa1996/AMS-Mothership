@@ -93,9 +93,14 @@ export const NO_COMPANY_ACCOUNT = "No company in HubSpot";
 // Account names compare ignoring case and spacing ("Move Logistix " matches "move logistix").
 export const nameKey = (name: string) => name.trim().replace(/\s+/g, " ").toLowerCase();
 
+// Contacts brought over from Salesforce often have the Salesforce account ID (001bn00000rjErVAAU,
+// 000000000000000AAA) in Company name instead of a real name.
+export const looksLikeSalesforceId = (v: string) => /^0[a-zA-Z0-9]{14}(?:[a-zA-Z0-9]{3})?$/.test(v) && /\d/.test(v);
+
 // The account a contact with no linked HubSpot company belongs under.
 export function fallbackAccountName(r: HubSpotRecord) {
-  return clean(r.properties.company)?.replace(/\s+/g, " ") ?? NO_COMPANY_ACCOUNT;
+  const name = clean(r.properties.company)?.replace(/\s+/g, " ");
+  return name && !looksLikeSalesforceId(name) ? name : NO_COMPANY_ACCOUNT;
 }
 
 const isNewer = (incoming: Date, stored: Date | null) => !stored || incoming.getTime() > stored.getTime();
@@ -217,6 +222,23 @@ export async function syncHubSpot(db: PrismaClient, companyId: string, token: st
   for (const batch of chunk(contactCreates, 500)) await db.contact.createMany({ data: batch });
   for (const batch of chunk(contactUpdates, 100)) {
     await db.$transaction(batch.map((u) => db.contact.update({ where: { id: u.id }, data: u.data })));
+  }
+  // Earlier syncs made an account for each Salesforce ID typed as a company name. Fold those into
+  // the "No company in HubSpot" account and delete them.
+  const badAccounts = (
+    await db.account.findMany({ where: { companyId, source: "HUBSPOT", hubspotId: null }, select: { id: true, name: true } })
+  ).filter((a) => looksLikeSalesforceId(a.name.trim()));
+  if (badAccounts.length) {
+    const ids = badAccounts.map((a) => a.id);
+    const target =
+      accountByName.get(nameKey(NO_COMPANY_ACCOUNT)) ??
+      (await db.account.create({ data: { companyId, name: NO_COMPANY_ACCOUNT, source: "HUBSPOT" }, select: { id: true } })).id;
+    await db.$transaction([
+      db.contact.updateMany({ where: { accountId: { in: ids } }, data: { accountId: target, isPrimary: false } }),
+      db.project.updateMany({ where: { accountId: { in: ids } }, data: { accountId: target } }),
+      db.activity.updateMany({ where: { accountId: { in: ids } }, data: { accountId: target } }),
+      db.account.deleteMany({ where: { id: { in: ids } } }),
+    ]);
   }
   // Each account with contacts but no primary gets its first contact marked primary, so quotes fill in.
   const noPrimary = await db.account.findMany({
