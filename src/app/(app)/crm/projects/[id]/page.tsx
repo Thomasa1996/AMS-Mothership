@@ -76,7 +76,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
           <section className="card p-4">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="font-semibold">Quotes</h2>
-              <Link href={`/sales/quotes/new?projectId=${project.id}`} className="btn py-1">New quote</Link>
+              <Link href="/sales/quotes" className="btn py-1">Quote files</Link>
             </div>
             {project.quotes.length === 0 ? (
               <p className="text-sm text-slate-500">No quotes yet.</p>

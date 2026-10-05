@@ -2,108 +2,113 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { limitedToOwn, quoteScope } from "@/lib/access";
-import { formatDate } from "@/lib/format";
-import { QUOTE_STATUSES, formatCents } from "@/lib/quote-math";
+import { fileKind } from "@/lib/file-upload";
 import { EmptyState, PageHeader } from "@/components/ui";
-import { QuoteStatusBadge } from "./status";
+import { ConfirmButton } from "@/app/(app)/crm/forms";
+import { deleteQuoteDoc } from "./doc-actions";
+import { QuoteDocUpload } from "./doc-upload";
 
-export default async function QuotesPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; mine?: string }> }) {
+const TZ = "America/New_York";
+const monthLabel = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: TZ });
+const dayLabel = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: TZ });
+const sizeLabel = (bytes: number) => `${Math.max(1, Math.round(bytes / 1024)).toLocaleString()} KB`;
+
+// Each rep's quote files, filed by the month they were added. Reps see their own; admins and
+// operations see everyone's and can narrow to one rep.
+export default async function QuotesPage({ searchParams }: { searchParams: Promise<{ rep?: string; q?: string }> }) {
   const user = await requireUser();
-  const { q = "", status = "", mine = "" } = await searchParams;
+  const own = limitedToOwn(user);
+  const { rep = "", q = "" } = await searchParams;
+  const ownerFilter = own ? user.id : rep || undefined;
 
-  const [quotes, totals] = await Promise.all([
-    db.quote.findMany({
+  const [docs, people, olderCount] = await Promise.all([
+    db.quoteDoc.findMany({
       where: {
-        ...quoteScope(user),
-        ...(status ? { status } : {}),
-        ...(mine ? { createdById: user.id } : {}),
-        ...(q
-          ? { OR: [{ title: { contains: q, mode: "insensitive" as const } }, { project: { name: { contains: q, mode: "insensitive" as const } } }, { project: { account: { name: { contains: q, mode: "insensitive" as const } } } }] }
-          : {}),
+        companyId: user.companyId,
+        ...(ownerFilter ? { ownerId: ownerFilter } : {}),
+        ...(q.trim() ? { fileName: { contains: q.trim(), mode: "insensitive" as const } } : {}),
       },
-      include: {
-        project: { select: { id: true, name: true, account: { select: { id: true, name: true } } } },
-        createdBy: { select: { name: true } },
-      },
-      orderBy: { number: "desc" },
+      select: { id: true, ownerId: true, fileName: true, size: true, uploadedAt: true },
+      orderBy: { uploadedAt: "desc" },
     }),
-    db.quote.groupBy({ by: ["status"], where: quoteScope(user), _sum: { totalCents: true }, _count: true }),
+    db.user.findMany({ where: { companyId: user.companyId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    db.quote.count({ where: quoteScope(user) }),
   ]);
-  const byStatus = Object.fromEntries(totals.map((t) => [t.status, t]));
+  const nameOf = new Map(people.map((p) => [p.id, p.name]));
+  const withFiles = own
+    ? []
+    : await db.quoteDoc.groupBy({ by: ["ownerId"], where: { companyId: user.companyId }, _count: true });
+  const reps = people.filter((p) => withFiles.some((w) => w.ownerId === p.id));
+
+  const months: { label: string; docs: typeof docs }[] = [];
+  for (const d of docs) {
+    const label = monthLabel.format(d.uploadedAt);
+    if (months.at(-1)?.label !== label) months.push({ label, docs: [] });
+    months.at(-1)!.docs.push(d);
+  }
 
   return (
-    <div>
-      <PageHeader
-        title="Quotes"
-        subtitle="Every proposal the team has written, in one place"
-        actions={
-          <div className="flex gap-2">
-            <Link href="/sales/quotes/upload" className="btn">Upload PDF quote</Link>
-            <Link href="/sales/quotes/new" className="btn btn-primary">New quote</Link>
-          </div>
-        }
-      />
-      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-        {QUOTE_STATUSES.map((s) => (
-          <Link
-            key={s.id}
-            href={status === s.id ? "/sales/quotes" : `/sales/quotes?status=${s.id}`}
-            className={`card p-4 hover:border-brand-500 ${status === s.id ? "border-brand-500 ring-1 ring-brand-500" : ""}`}
-          >
-            <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{s.label}</div>
-            <div className="mt-1 text-xl font-semibold">{formatCents(byStatus[s.id]?._sum.totalCents ?? 0)}</div>
-            <div className="text-xs text-slate-500">{byStatus[s.id]?._count ?? 0} quotes</div>
-          </Link>
-        ))}
-      </div>
-      <form className="mb-4 flex flex-wrap items-center gap-2">
-        {status && <input type="hidden" name="status" value={status} />}
-        <input className="input max-w-xs" name="q" defaultValue={q} placeholder="Search quotes, projects, accounts" />
-        {!limitedToOwn(user) && (
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="mine" value="1" defaultChecked={!!mine} /> Only mine
-          </label>
+    <div className="space-y-6">
+      <PageHeader title="Quotes" subtitle={own ? "Your quote files, filed by month" : "Every rep's quote files, filed by month"} />
+      <QuoteDocUpload />
+
+      <form className="flex flex-wrap items-center gap-2">
+        <input className="input max-w-xs" name="q" defaultValue={q} placeholder="Search file names" />
+        {!own && (
+          <select className="input w-auto" name="rep" defaultValue={rep}>
+            <option value="">All reps</option>
+            {reps.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
         )}
         <button className="btn">Filter</button>
+        {(q || rep) && <Link href="/sales/quotes" className="text-sm text-slate-500 hover:text-slate-800">Clear</Link>}
       </form>
-      <div className="card overflow-x-auto">
-        {quotes.length === 0 ? (
-          <EmptyState>No quotes yet. Start one from a project or with New quote.</EmptyState>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Quote</th>
-                <th>Account</th>
-                <th>Status</th>
-                <th>Date</th>
-                <th>Prepared by</th>
-                <th className="text-right">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {quotes.map((quote) => (
-                <tr key={quote.id} className="hover:bg-slate-50">
-                  <td className="text-slate-500">{quote.number}</td>
-                  <td>
-                    <Link href={`/sales/quotes/${quote.id}`} className="link">{quote.title}</Link>
-                    {quote.uploaded && <span className="badge ml-2 bg-slate-100 text-slate-600" title="Written in Word and uploaded">PDF</span>}
-                    <div className="text-xs text-slate-500">{quote.project.name}</div>
-                  </td>
-                  <td>
-                    <Link href={`/crm/accounts/${quote.project.account.id}`} className="text-slate-700 hover:underline">{quote.project.account.name}</Link>
-                  </td>
-                  <td><QuoteStatusBadge status={quote.status} /></td>
-                  <td className="whitespace-nowrap">{formatDate(quote.quoteDate)}</td>
-                  <td>{quote.createdBy.name}</td>
-                  <td className="text-right font-medium">{formatCents(quote.totalCents)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+
+      {months.length === 0 ? (
+        <div className="card">
+          <EmptyState>{q || rep ? "No files match." : own ? "No quotes yet. Add your first files above." : "No quote files yet."}</EmptyState>
+        </div>
+      ) : (
+        months.map((m) => (
+          <section key={m.label} className="space-y-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+              {m.label} <span className="font-normal normal-case tracking-normal">· {m.docs.length} {m.docs.length === 1 ? "file" : "files"}</span>
+            </h2>
+            <div className="card overflow-x-auto">
+              <table className="table">
+                <tbody>
+                  {m.docs.map((d) => (
+                    <tr key={d.id}>
+                      <td className="min-w-0">
+                        <a href={`/quote-doc/${d.id}`} className="link break-all">{d.fileName}</a>
+                        <span className="ml-2 text-xs text-slate-500">{fileKind(d.fileName)} · {sizeLabel(d.size)}</span>
+                      </td>
+                      {!own && <td className="whitespace-nowrap text-slate-600">{nameOf.get(d.ownerId) ?? "Former teammate"}</td>}
+                      <td className="whitespace-nowrap text-slate-500">{dayLabel.format(d.uploadedAt)}</td>
+                      <td className="text-right">
+                        {(d.ownerId === user.id || user.role === "ADMIN") && (
+                          <ConfirmButton
+                            action={deleteQuoteDoc.bind(null, d.id)}
+                            label="Remove"
+                            confirmText={`Remove ${d.fileName}?`}
+                            className="text-sm text-slate-400 hover:text-red-600"
+                          />
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ))
+      )}
+
+      {olderCount > 0 && (
+        <p className="text-sm text-slate-500">
+          <Link href="/sales/quotes/older" className="link">Older quotes built in Mothership ({olderCount})</Link>
+        </p>
+      )}
     </div>
   );
 }

@@ -6,6 +6,7 @@ export default function SalesLayout({ children }: { children: React.ReactNode })
       <SubNav
         items={[
           { href: "/sales/quotes", label: "Quotes" },
+          { href: "/sales/quote-templates", label: "Quote templates" },
           { href: "/sales/rates", label: "Rate card" },
           { href: "/sales/vendors", label: "Vendors" },
           { href: "/sales/warehouses", label: "Warehouses" },

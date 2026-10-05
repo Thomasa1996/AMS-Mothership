@@ -454,3 +454,32 @@ model TrainingFile {
   item   TrainingItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
   data   Bytes
 }
+
+// A file a rep drops into Sales > Quotes (their Word, PDF or Excel quote). Listed by the month it was added.
+model QuoteDoc {
+  id          String   @id @default(cuid())
+  companyId   String
+  ownerId     String
+  fileName    String
+  contentType String
+  size        Int
+  data        Bytes
+  uploadedAt  DateTime @default(now())
+
+  @@index([companyId, ownerId, uploadedAt])
+}
+
+// A starting file (e.g. a Word proposal) admins post under Sales > Quote templates for everyone to download.
+model QuoteTemplate {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  description String?
+  fileName    String
+  contentType String
+  size        Int
+  data        Bytes
+  uploadedAt  DateTime @default(now())
+
+  @@index([companyId])
+}
