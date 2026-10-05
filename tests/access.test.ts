@@ -13,8 +13,9 @@ describe("access scopes", () => {
   });
 
   it("gives admins every owned account in the company", () => {
-    expect(accountScope(admin)).toEqual({ companyId: "c1", ownerId: { not: null } });
-    expect(projectScope(admin)).toEqual({ companyId: "c1", account: { ownerId: { not: null } } });
+    const owned = { OR: [{ ownerId: { not: null } }, { hubspotOwnerName: { not: null } }] };
+    expect(accountScope(admin)).toEqual({ companyId: "c1", ...owned });
+    expect(projectScope(admin)).toEqual({ companyId: "c1", account: owned });
     expect(quoteScope(admin)).toEqual({ companyId: "c1" });
     expect(ownerChoices(admin)).toEqual({ companyId: "c1", active: true });
   });

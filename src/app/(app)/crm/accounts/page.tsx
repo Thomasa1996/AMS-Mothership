@@ -17,7 +17,13 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
       where: {
         ...accountScope(user),
         ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
-        ...(owner === "me" ? { ownerId: user.id } : owner ? { ownerId: owner } : {}),
+        ...(owner === "me"
+          ? { ownerId: user.id }
+          : owner.startsWith("hs:")
+            ? { ownerId: null, hubspotOwnerName: owner.slice(3) }
+            : owner
+              ? { ownerId: owner }
+              : {}),
       },
       include: {
         owner: { select: { id: true, name: true, photoAt: true } },
@@ -29,6 +35,17 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
     }),
     db.user.findMany({ where: { companyId: user.companyId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
+  // HubSpot owners with no Mothership login yet still own their companies, so they can be filtered on too.
+  const hubspotOwners = limitedToOwn(user)
+    ? []
+    : (
+        await db.account.findMany({
+          where: { companyId: user.companyId, ownerId: null, hubspotOwnerName: { not: null } },
+          distinct: ["hubspotOwnerName"],
+          select: { hubspotOwnerName: true },
+          orderBy: { hubspotOwnerName: "asc" },
+        })
+      ).map((a) => a.hubspotOwnerName!);
 
   return (
     <div>
@@ -46,6 +63,13 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
             {users.map((u) => (
               <option key={u.id} value={u.id}>{u.name}</option>
             ))}
+            {hubspotOwners.length > 0 && (
+              <optgroup label="HubSpot owners (no Mothership login yet)">
+                {hubspotOwners.map((n) => (
+                  <option key={n} value={`hs:${n}`}>{n} (HubSpot)</option>
+                ))}
+              </optgroup>
+            )}
           </select>
         )}
         <button className="btn">Filter</button>
