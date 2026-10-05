@@ -38,6 +38,11 @@ export async function addFromApollo(apolloId: string): Promise<AddState> {
     const account =
       candidates.find((a) => nameKey(a.name) === key2) ??
       (await tx.account.create({ data: { ...accountData, companyId: user.companyId, source: "APOLLO", ownerId: user.id }, select: { id: true, name: true, ownerId: true } }));
+    // A company nobody owns is hidden in the CRM, so whoever adds someone to it takes it over.
+    if (!account.ownerId) {
+      await tx.account.update({ where: { id: account.id }, data: { ownerId: user.id } });
+      account.ownerId = user.id;
+    }
     const hasContacts = await tx.contact.count({ where: { accountId: account.id } });
     await tx.contact.create({ data: { ...contact, phone: null, accountId: account.id, companyId: user.companyId, apolloId, isPrimary: hasContacts === 0 } });
     await tx.activity.create({

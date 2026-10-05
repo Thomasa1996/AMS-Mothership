@@ -12,9 +12,9 @@ describe("access scopes", () => {
     expect(limitedToOwn(pm)).toBe(false);
   });
 
-  it("gives admins the whole company", () => {
-    expect(accountScope(admin)).toEqual({ companyId: "c1" });
-    expect(projectScope(admin)).toEqual({ companyId: "c1" });
+  it("gives admins every owned account in the company", () => {
+    expect(accountScope(admin)).toEqual({ companyId: "c1", ownerId: { not: null } });
+    expect(projectScope(admin)).toEqual({ companyId: "c1", account: { ownerId: { not: null } } });
     expect(quoteScope(admin)).toEqual({ companyId: "c1" });
     expect(ownerChoices(admin)).toEqual({ companyId: "c1", active: true });
   });
