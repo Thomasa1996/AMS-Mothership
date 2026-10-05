@@ -47,7 +47,7 @@ const sourceIds = ACCOUNT_SOURCES.map((s) => s.id) as [string, ...string[]];
 const activityIds = ACTIVITY_TYPES.map((a) => a.id) as [string, ...string[]];
 
 export const AccountSchema = z.object({
-  name: requiredText("Company name"),
+  name: requiredText("Account name"),
   industry: optionalText,
   website: optionalText,
   phone: optionalText,

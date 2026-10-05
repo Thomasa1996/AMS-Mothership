@@ -55,7 +55,7 @@ export async function removeUser(userId: string, handToId: string): Promise<Form
     db.user.findFirst({ where: { id: handToId, companyId: admin.companyId, active: true } }),
   ]);
   if (!person) return { error: "That person isn't on the team" };
-  if (!handTo || handTo.id === person.id) return { error: "Pick who takes over their companies" };
+  if (!handTo || handTo.id === person.id) return { error: "Pick who takes over their accounts" };
   await db.$transaction([
     db.account.updateMany({ where: { companyId: admin.companyId, ownerId: person.id }, data: { ownerId: handTo.id } }),
     db.project.updateMany({ where: { companyId: admin.companyId, managerId: person.id }, data: { managerId: handTo.id } }),

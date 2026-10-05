@@ -43,18 +43,18 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
 
   return (
     <div>
-      <PageHeader title="Contacts" subtitle={`${total} ${total === 1 ? "contact" : "contacts"}. Add or edit them on their company's page.`} />
+      <PageHeader title="Contacts" subtitle={`${total} ${total === 1 ? "contact" : "contacts"}. Add or edit them on their account's page.`} />
       <form className="mb-4 flex flex-wrap gap-2">
-        <input className="input max-w-sm" name="q" defaultValue={term} placeholder="Search name, email, title, phone or company" />
+        <input className="input max-w-sm" name="q" defaultValue={term} placeholder="Search name, email, title, phone or account" />
         <button className="btn">Search</button>
       </form>
       <div className="card overflow-x-auto">
         {contacts.length === 0 ? (
-          <EmptyState>{term ? "No contacts match." : "No contacts yet. Add them from a company's page."}</EmptyState>
+          <EmptyState>{term ? "No contacts match." : "No contacts yet. Add them from an account's page."}</EmptyState>
         ) : (
           <table className="table">
             <thead>
-              <tr><th>Name</th><th>Title</th><th>Company</th><th>Email</th><th>Phone</th></tr>
+              <tr><th>Name</th><th>Title</th><th>Account</th><th>Email</th><th>Phone</th></tr>
             </thead>
             <tbody>
               {contacts.map((c) => (

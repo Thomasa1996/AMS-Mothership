@@ -23,7 +23,7 @@ export default async function SalesRepPage({ params }: { params: Promise<{ id: s
   const embed = rep.repReportUrl && canEmbed(rep.repReportUrl);
 
   const tiles = [
-    { label: "Companies", value: String(s.accounts) },
+    { label: "Accounts", value: String(s.accounts) },
     { label: "Open pipeline", value: dollars(s.openPipeline), note: `${s.openProjects} projects` },
     { label: `Quotes sent in ${year}`, value: String(s.sentCount), note: formatCents(s.sentCents) },
     { label: `Won in ${year}`, value: String(s.wonCount), note: formatCents(s.wonCents) },

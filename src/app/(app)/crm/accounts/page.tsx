@@ -55,16 +55,16 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
   return (
     <div>
       <PageHeader
-        title="Companies"
-        subtitle={`${accounts.length} ${accounts.length === 1 ? "company" : "companies"}`}
-        actions={<Link href="/crm/accounts/new" className="btn btn-primary">New company</Link>}
+        title="Accounts"
+        subtitle={`${accounts.length} ${accounts.length === 1 ? "account" : "accounts"}`}
+        actions={<Link href="/crm/accounts/new" className="btn btn-primary">New account</Link>}
       />
       <form className="mb-4 flex flex-wrap gap-2">
-        <input className="input max-w-xs" name="q" defaultValue={q} placeholder="Search companies" />
+        <input className="input max-w-xs" name="q" defaultValue={q} placeholder="Search accounts" />
         {!limitedToOwn(user) && (
           <select className="input w-auto" name="owner" defaultValue={owner}>
             <option value="">All owners</option>
-            <option value="me">My companies</option>
+            <option value="me">My accounts</option>
             {users.map((u) => (
               <option key={u.id} value={u.id}>{u.name}</option>
             ))}
@@ -77,12 +77,12 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
       </form>
       <div className="card overflow-x-auto">
         {accounts.length === 0 ? (
-          <EmptyState>No companies yet. Create one to get started.</EmptyState>
+          <EmptyState>No accounts yet. Create one to get started.</EmptyState>
         ) : (
           <table className="table">
             <thead>
               <tr>
-                <th>Company</th>
+                <th>Account</th>
                 <th>Industry</th>
                 <th>Primary contact</th>
                 <th>Owner</th>

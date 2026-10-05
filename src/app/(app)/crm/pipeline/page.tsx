@@ -25,7 +25,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
           !limitedToOwn(user) && (
             <form>
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="mine" value="1" defaultChecked={!!mine} /> Only my companies
+                <input type="checkbox" name="mine" value="1" defaultChecked={!!mine} /> Only my accounts
                 <button className="btn">Apply</button>
               </label>
             </form>
