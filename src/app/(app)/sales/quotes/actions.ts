@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { stageLabel } from "@/lib/constants";
+import { closedAtFor, stageLabel } from "@/lib/constants";
 import { projectScope, quoteScope } from "@/lib/access";
 import { firstError } from "@/lib/validation";
 import { QUOTE_STATUS_IDS, QuoteInput, formatCents, lineAmountCents, quoteStatusLabel, quoteTotalCents } from "@/lib/quote-math";
@@ -123,7 +123,7 @@ export async function setQuoteStatus(id: string, status: string) {
     ...(next === "ACCEPTED"
       ? [db.project.update({ where: { id: project.id }, data: { estimatedValue: Math.round(quote.totalCents / 100) } })]
       : []),
-    ...(nextStage ? [db.project.update({ where: { id: project.id }, data: { stage: nextStage } })] : []),
+    ...(nextStage ? [db.project.update({ where: { id: project.id }, data: { stage: nextStage, ...closedAtFor(project.stage, nextStage, project.closedAt) } })] : []),
     db.activity.create({
       data: {
         companyId: user.companyId,

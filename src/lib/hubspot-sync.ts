@@ -13,7 +13,7 @@ import { listAll, listDealStages, listOwners, type HubSpotRecord, type HubSpotSt
 
 export const COMPANY_PROPS = ["name", "domain", "website", "phone", "industry", "address", "city", "state", "zip", "hubspot_owner_id", "hs_lastmodifieddate"];
 export const CONTACT_PROPS = ["firstname", "lastname", "email", "phone", "mobilephone", "jobtitle", "company", "hubspot_owner_id", "lastmodifieddate"];
-export const DEAL_PROPS = ["dealname", "dealstage", "amount", "hubspot_owner_id", "hs_lastmodifieddate", "description"];
+export const DEAL_PROPS = ["dealname", "dealstage", "amount", "hubspot_owner_id", "hs_lastmodifieddate", "description", "closedate"];
 
 // HubSpot's default sales pipeline. Other pipelines fall back to each stage's win probability.
 const DEFAULT_STAGES: Record<string, string> = {
@@ -77,7 +77,13 @@ export function dealToProject(r: HubSpotRecord, stages: HubSpotStage[]) {
     stage: mapDealStage(p.dealstage, stages),
     estimatedValue: Number.isFinite(amount) && p.amount ? Math.round(amount) : null,
     notes: clean(p.description),
+    closedAt: closeDate(p.closedate),
   };
+}
+
+function closeDate(raw: string | null | undefined) {
+  const d = raw ? new Date(raw) : null;
+  return d && !Number.isNaN(d.getTime()) ? d : null;
 }
 
 function modifiedAt(r: HubSpotRecord, prop: string) {
@@ -251,7 +257,7 @@ export async function syncHubSpot(db: PrismaClient, companyId: string, token: st
   // Projects
   const existingProjects = await db.project.findMany({
     where: { companyId, hubspotId: { not: null } },
-    select: { id: true, hubspotId: true, hubspotModifiedAt: true, stage: true, accountId: true },
+    select: { id: true, hubspotId: true, hubspotModifiedAt: true, stage: true, accountId: true, closedAt: true },
   });
   const projectByHs = new Map(existingProjects.map((p) => [p.hubspotId!, p]));
   let projectsCreated = 0;
@@ -271,7 +277,8 @@ export async function syncHubSpot(db: PrismaClient, companyId: string, token: st
       const created = await db.project.create({ data: { ...data, companyId, hubspotId: d.id } });
       activities.push({ companyId, accountId, projectId: created.id, userId: actorId, type: "STAGE_CHANGE", body: "Imported from HubSpot" });
       projectsCreated++;
-    } else if (isNewer(data.hubspotModifiedAt, existing.hubspotModifiedAt)) {
+    } else if (isNewer(data.hubspotModifiedAt, existing.hubspotModifiedAt) || (data.closedAt && !existing.closedAt)) {
+      // The second case backfills close dates on deals synced before Mothership read them.
       await db.project.update({ where: { id: existing.id }, data });
       if (existing.stage !== data.stage) {
         activities.push({ companyId, accountId, projectId: existing.id, userId: actorId, type: "STAGE_CHANGE", body: "Stage updated from HubSpot" });

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { stageLabel } from "@/lib/constants";
+import { closedAtFor, stageLabel } from "@/lib/constants";
 import { accountScope, limitedToOwn, projectScope } from "@/lib/access";
 import {
   AccountSchema,
@@ -135,7 +135,9 @@ export async function createProject(_prev: FormState, formData: FormData): Promi
   try {
     await getAccountOrThrow(parsed.data.accountId, user);
     await assertUserInCompany(parsed.data.managerId, user.companyId);
-    const project = await db.project.create({ data: { ...parsed.data, companyId: user.companyId } });
+    const project = await db.project.create({
+      data: { ...parsed.data, ...closedAtFor(null, parsed.data.stage, null), companyId: user.companyId },
+    });
     await db.activity.create({
       data: {
         companyId: user.companyId,
@@ -162,7 +164,7 @@ export async function updateProject(projectId: string, _prev: FormState, formDat
     const existing = await getProjectOrThrow(projectId, user);
     await getAccountOrThrow(parsed.data.accountId, user);
     await assertUserInCompany(parsed.data.managerId, user.companyId);
-    await db.project.update({ where: { id: projectId }, data: parsed.data });
+    await db.project.update({ where: { id: projectId }, data: { ...parsed.data, ...closedAtFor(existing.stage, parsed.data.stage, existing.closedAt) } });
     if (existing.stage !== parsed.data.stage) {
       await logStageChange(user, parsed.data.accountId, projectId, existing.stage, parsed.data.stage);
     }
@@ -178,7 +180,7 @@ export async function setProjectStage(projectId: string, stage: string) {
   const nextStage = StageSchema.parse(stage);
   const existing = await getProjectOrThrow(projectId, user);
   if (existing.stage === nextStage) return;
-  await db.project.update({ where: { id: projectId }, data: { stage: nextStage } });
+  await db.project.update({ where: { id: projectId }, data: { stage: nextStage, ...closedAtFor(existing.stage, nextStage, existing.closedAt) } });
   await logStageChange(user, existing.accountId, projectId, existing.stage, nextStage);
   revalidatePath("/crm");
 }

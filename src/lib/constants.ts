@@ -61,3 +61,15 @@ export const INDUSTRIES = [
 
 // Shown for vendor rows imported without a company name.
 export const MISSING_COMPANY = "Company not listed";
+
+// Stages that count as won business for revenue.
+export const WON_STAGES: StageId[] = ["BOOKED", "IN_PROGRESS", "COMPLETED"];
+
+// Stamps the won date when a project first moves into a won stage, and clears it if it falls back out.
+export function closedAtFor(prevStage: string | null, nextStage: string, current: Date | null): { closedAt?: Date | null } {
+  const wasWon = prevStage != null && (WON_STAGES as string[]).includes(prevStage);
+  const isWon = (WON_STAGES as string[]).includes(nextStage);
+  if (isWon && !wasWon) return current ? {} : { closedAt: new Date() };
+  if (!isWon && wasWon) return { closedAt: null };
+  return {};
+}

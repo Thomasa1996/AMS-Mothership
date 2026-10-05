@@ -13,6 +13,7 @@ export default async function RevenueLayout({ children }: { children: React.Reac
       <SubNav
         items={[
           { href: "/reports", label: "Commercial Sales Team Report", exact: true },
+          { href: "/reports/yoy", label: "Year over year" },
           { href: "/reports/reps", label: "Sales reps" },
         ]}
       />

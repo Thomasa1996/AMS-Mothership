@@ -156,6 +156,8 @@ model Project {
   destinationAddress String?
   moveDate           DateTime?
   estimatedValue     Int?
+  // When the deal was won (HubSpot close date, or when it moved to Booked here). Drives Revenue > Year over year.
+  closedAt           DateTime?
   managerId          String?
   manager            User?     @relation("ProjectManager", fields: [managerId], references: [id])
   notes              String?
@@ -240,6 +242,19 @@ model VendorRating {
 
   @@unique([vendorId, userId])
   @@index([companyId])
+}
+
+// Revenue a company booked in one month of a past year, typed in by an admin on Revenue > Year over year
+// for months before Mothership has its own data. Whole dollars. Overrides the figure from won projects.
+model RevenueMonth {
+  id        String   @id @default(cuid())
+  companyId String
+  year      Int
+  month     Int // 1-12
+  amount    Int
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, year, month])
 }
 
 // The company's standard prices (the rate sheet), used to fill quote lines so every rep
