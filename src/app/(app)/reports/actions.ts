@@ -52,3 +52,9 @@ export async function saveRepReport(userId: string, _prev: FormState, formData: 
   revalidatePath("/reports/reps", "layout");
   return { ok: true };
 }
+
+export async function setOnRepBoard(userId: string, on: boolean) {
+  const admin = await requireAdmin();
+  await db.user.updateMany({ where: { id: userId, companyId: admin.companyId, role: "ADMIN" }, data: { onRepBoard: on } });
+  revalidatePath("/reports/reps");
+}

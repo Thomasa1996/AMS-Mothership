@@ -72,6 +72,8 @@ model User {
   theme        String   @default("dark")
   // A link to this rep's own report in SharePoint (or Power BI), shown on Revenue > Sales reps.
   repReportUrl String?
+  // Admins who also sell are listed on Revenue > Sales reps only when this is on.
+  onRepBoard   Boolean  @default(false)
   // false once an admin removes them from the team: they can't sign in, but their history stays.
   active       Boolean  @default(true)
   // Optional background picture behind the app (a JPEG data URL), served by /user-background/[id].

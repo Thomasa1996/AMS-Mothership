@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/ui";
 import { photoUrl } from "@/lib/photos";
 import { formatCents } from "@/lib/quote-math";
 import { repStats, winRate } from "@/lib/rep-stats";
+import { setOnRepBoard } from "../actions";
 
 const dollars = (n: number) => `$${Math.round(n).toLocaleString()}`;
 const initials = (name: string) => name.split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
@@ -12,14 +13,36 @@ const initials = (name: string) => name.split(/\s+/).map((w) => w[0]).slice(0, 2
 export default async function SalesRepsPage() {
   const user = await requireUser();
   const reps = await db.user.findMany({
-    where: { companyId: user.companyId, active: true, role: { in: ["SALES", "ADMIN"] } },
+    where: { companyId: user.companyId, active: true, OR: [{ role: "SALES" }, { role: "ADMIN", onRepBoard: true }] },
     select: { id: true, name: true, title: true, role: true, photoAt: true, repReportUrl: true },
+    orderBy: { name: "asc" },
+  });
+  const admins = await db.user.findMany({
+    where: { companyId: user.companyId, active: true, role: "ADMIN" },
+    select: { id: true, name: true, onRepBoard: true },
     orderBy: { name: "asc" },
   });
   const year = new Date().getFullYear();
   const stats = await repStats(user.companyId, reps.map((r) => r.id), new Date(year, 0, 1));
 
-  if (reps.length === 0) return <div className="card"><EmptyState>No sales reps on the team yet.</EmptyState></div>;
+  const adminPicker = (
+    <details className="card p-4 text-sm">
+      <summary className="cursor-pointer font-medium">Admins shown here</summary>
+      <p className="mt-2 text-slate-500">Sales reps are always listed. Tick the admins who also sell.</p>
+      <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+        {admins.map((a) => (
+          <form key={a.id} action={setOnRepBoard.bind(null, a.id, !a.onRepBoard)}>
+            <button className="flex items-center gap-2">
+              <input type="checkbox" readOnly checked={a.onRepBoard} tabIndex={-1} className="pointer-events-none" />
+              {a.name}
+            </button>
+          </form>
+        ))}
+      </div>
+    </details>
+  );
+
+  if (reps.length === 0) return <div className="space-y-4"><div className="card"><EmptyState>No sales reps on the team yet.</EmptyState></div>{adminPicker}</div>;
 
   return (
     <div className="space-y-4">
@@ -86,6 +109,7 @@ export default async function SalesRepsPage() {
           </tbody>
         </table>
       </div>
+      {adminPicker}
     </div>
   );
 }
