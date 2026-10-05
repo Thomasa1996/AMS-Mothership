@@ -11,10 +11,10 @@ export default async function SheetPage({ params }: { params: Promise<{ sheetId:
   const { sheetId } = await params;
   if (!/^\d+$/.test(sheetId)) notFound();
   const conn = await smartsheetFor(user.companyId);
-  if (!conn) redirect("/sales/project-management");
+  if (!conn) redirect("/operations/remote-control");
   if (!sheetVisible(conn.sheetIds, sheetId)) notFound();
 
-  const back = <Link href="/sales/project-management" className="text-sm text-slate-500 hover:text-slate-700">&larr; Master List Project Management</Link>;
+  const back = <Link href="/operations/remote-control" className="text-sm text-slate-500 hover:text-slate-700">&larr; Remote control</Link>;
   try {
     const sheet = await getSheet(conn.token, conn.region, sheetId);
     const table = sheetTable(sheet);

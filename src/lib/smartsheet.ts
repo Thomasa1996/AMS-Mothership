@@ -1,4 +1,4 @@
-// Minimal read-only Smartsheet API 2.0 client for Sales > Project management.
+// Minimal read-only Smartsheet API 2.0 client for Operations > Remote control.
 // Sheets are read live on each page view; nothing from Smartsheet is stored in Mothership.
 
 export const SMARTSHEET_REGIONS = [

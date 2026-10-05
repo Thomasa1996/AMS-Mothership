@@ -14,7 +14,7 @@ export default async function ProjectManagementPage() {
   if (!conn) {
     return (
       <div>
-        <PageHeader title="Master List Project Management" subtitle="Your project sheets from Smartsheet" />
+        <PageHeader title="Remote control" subtitle="Your project sheets from Smartsheet" />
         <div className="card p-6 text-sm text-slate-600">
           Smartsheet isn&apos;t connected yet.{" "}
           {admin ? (
@@ -38,7 +38,7 @@ export default async function ProjectManagementPage() {
   return (
     <div>
       <PageHeader
-        title="Master List Project Management"
+        title="Remote control"
         subtitle={error ? "Your project sheets from Smartsheet" : `${sheets.length} sheets from Smartsheet, read live`}
         actions={admin ? <Link href="/settings/smartsheet" className="btn">Choose sheets</Link> : undefined}
       />
@@ -55,7 +55,7 @@ export default async function ProjectManagementPage() {
             <tbody>
               {sheets.map((s) => (
                 <tr key={s.id}>
-                  <td><Link href={`/sales/project-management/${s.id}`} className="link">{s.name}</Link></td>
+                  <td><Link href={`/operations/remote-control/${s.id}`} className="link">{s.name}</Link></td>
                   <td className="text-slate-600">{s.modifiedAt ? dateTime.format(new Date(s.modifiedAt)) : ""}</td>
                   <td className="text-right">
                     {s.permalink && <a href={s.permalink} target="_blank" rel="noreferrer" className="text-sm text-slate-500 hover:text-slate-700">Open in Smartsheet ↗</a>}

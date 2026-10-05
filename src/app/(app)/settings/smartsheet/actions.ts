@@ -28,7 +28,7 @@ export async function connectSmartsheet(_prev: FormState, formData: FormData): P
   }
   await db.company.update({ where: { id: admin.companyId }, data: { smartsheetToken: seal(token), smartsheetRegion: region } });
   revalidatePath("/settings/smartsheet");
-  revalidatePath("/sales/project-management");
+  revalidatePath("/operations/remote-control");
   return { ok: true };
 }
 
@@ -41,7 +41,7 @@ export async function saveSheetChoice(_prev: FormState, formData: FormData): Pro
     data: { smartsheetSheetIds: all || ids.length === 0 ? null : JSON.stringify(ids) },
   });
   revalidatePath("/settings/smartsheet");
-  revalidatePath("/sales/project-management");
+  revalidatePath("/operations/remote-control");
   return { ok: true };
 }
 
@@ -49,7 +49,7 @@ export async function disconnectSmartsheet() {
   const admin = await requireAdmin();
   await db.company.update({ where: { id: admin.companyId }, data: { smartsheetToken: null, smartsheetSheetIds: null, smartsheetImport: null } });
   revalidatePath("/settings/smartsheet");
-  revalidatePath("/sales/project-management");
+  revalidatePath("/operations/remote-control");
 }
 
 // Which sheet becomes CRM projects, and which of its columns hold each project field.

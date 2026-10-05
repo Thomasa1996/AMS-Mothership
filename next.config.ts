@@ -5,7 +5,10 @@ const nextConfig: NextConfig = {
   experimental: { serverActions: { bodySizeLimit: "11mb" } },
   // Warehouses moved from its own top tab to Sales; keep old links working.
   async redirects() {
-    return [{ source: "/warehouse/:path*", destination: "/sales/warehouses/:path*", permanent: true }];
+    return [
+      { source: "/warehouse/:path*", destination: "/sales/warehouses/:path*", permanent: true },
+      { source: "/sales/project-management/:path*", destination: "/operations/remote-control/:path*", permanent: true },
+    ];
   },
 };
 
