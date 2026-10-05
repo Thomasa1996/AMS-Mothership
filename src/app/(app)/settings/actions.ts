@@ -1,5 +1,6 @@
 "use server";
 
+import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
@@ -133,6 +134,24 @@ export async function saveProfile(_prev: FormState, formData: FormData): Promise
   if (!parsed.success) return { error: firstError(parsed.error) };
   await db.user.update({ where: { id: user.id }, data: parsed.data });
   revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+const PasswordSchema = z
+  .object({
+    current: z.string().min(1, "Enter your current password"),
+    password: z.string().min(8, "New password must be at least 8 characters"),
+    confirm: z.string(),
+  })
+  .refine((d) => d.password === d.confirm, { message: "The new passwords don't match" });
+
+export async function changeMyPassword(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const parsed = PasswordSchema.safeParse(formToObject(formData));
+  if (!parsed.success) return { error: firstError(parsed.error) };
+  const me = await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { passwordHash: true } });
+  if (!(await bcrypt.compare(parsed.data.current, me.passwordHash))) return { error: "Your current password isn't right" };
+  await db.user.update({ where: { id: user.id }, data: { passwordHash: await bcrypt.hash(parsed.data.password, 10) } });
   return { ok: true };
 }
 

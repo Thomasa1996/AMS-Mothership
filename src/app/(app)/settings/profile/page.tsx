@@ -7,6 +7,7 @@ import { PhotoUpload } from "@/components/photo-upload";
 import { ThemePicker } from "@/components/theme-picker";
 import { BackgroundUpload } from "@/components/background-upload";
 import { backgroundUrl, photoUrl } from "@/lib/photos";
+import { PasswordForm } from "./password-form";
 
 export default async function ProfilePage() {
   const user = await requireUser();
@@ -42,6 +43,10 @@ export default async function ProfilePage() {
             hint="Printed on the cover and sign-off of quotes you prepare. Sign on white paper, photograph it, and crop it tight."
           />
         </SettingsForm>
+      </div>
+      <div className="card p-5">
+        <h2 className="mb-3 font-semibold">Password</h2>
+        <PasswordForm />
       </div>
     </div>
   );
