@@ -5,7 +5,6 @@ export default function OperationsLayout({ children }: { children: React.ReactNo
     <div className="space-y-6">
       <SubNav
         items={[
-          { href: "/operations", label: "Overview", exact: true },
           { href: "/operations/remote-control", label: "Remote control" },
         ]}
       />
