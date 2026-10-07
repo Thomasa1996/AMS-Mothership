@@ -6,10 +6,10 @@ import { EmptyState, PageHeader } from "@/components/ui";
 import { ConfirmButton } from "@/app/(app)/crm/forms";
 import { deleteMarketingFile } from "./actions";
 import { MarketingUpload } from "./upload";
+import { MarketingPreview } from "./preview";
 
 const day = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "America/New_York" });
 const size = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
-const PICTURES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
 
 // Shared marketing files. Admins add and remove them; everyone can view and download.
 export default async function MarketingPage({ searchParams }: { searchParams: Promise<{ q?: string; kind?: string }> }) {
@@ -21,6 +21,9 @@ export default async function MarketingPage({ searchParams }: { searchParams: Pr
     select: { id: true, fileName: true, contentType: true, size: true, uploadedAt: true, uploadedById: true },
     orderBy: { uploadedAt: "desc" },
   });
+  const previewed = new Set(
+    (await db.marketingFile.findMany({ where: { companyId: user.companyId, thumbnail: { not: null } }, select: { id: true } })).map((f) => f.id),
+  );
   const kinds = [...new Set(all.map((f) => fileKind(f.fileName)))].sort();
   const files = kind ? all.filter((f) => fileKind(f.fileName) === kind) : all;
   const people = new Map(
@@ -50,13 +53,8 @@ export default async function MarketingPage({ searchParams }: { searchParams: Pr
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {files.map((f) => (
             <div key={f.id} className="card flex min-w-0 flex-col overflow-hidden">
-              <a href={`/marketing-file/${f.id}?view`} target="_blank" rel="noreferrer" className="flex h-36 items-center justify-center bg-slate-50">
-                {PICTURES.has(f.contentType) ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={`/marketing-file/${f.id}?view`} alt={f.fileName} loading="lazy" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="rounded bg-slate-100 px-2 py-1 text-sm font-medium text-slate-600">{fileKind(f.fileName)}</span>
-                )}
+              <a href={`/marketing-file/${f.id}?view`} target="_blank" rel="noreferrer" className="block">
+                <MarketingPreview id={f.id} fileName={f.fileName} kind={fileKind(f.fileName)} saved={previewed.has(f.id)} admin={admin} />
               </a>
               <div className="flex flex-1 flex-col gap-1 p-3">
                 <a href={`/marketing-file/${f.id}?view`} target="_blank" rel="noreferrer" className="link break-words text-sm font-medium">{f.fileName}</a>

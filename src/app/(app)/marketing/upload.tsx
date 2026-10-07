@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { ACCEPTED_FILES } from "@/lib/file-upload";
+import { drawPreview, drawnKind } from "@/lib/browser-preview";
 import { addMarketingFile } from "./actions";
 
 export function MarketingUpload() {
@@ -20,6 +21,10 @@ export function MarketingUpload() {
     for (const f of [...files]) {
       const form = new FormData();
       form.set("file", f);
+      if (drawnKind(f.name)) {
+        const preview = await drawPreview(f.name, f);
+        if (preview) form.set("thumbnail", preview, "preview.jpg");
+      }
       try {
         const res = await addMarketingFile({}, form);
         if (res.error) errors.push(res.error);

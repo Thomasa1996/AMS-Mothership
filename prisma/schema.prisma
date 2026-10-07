@@ -572,6 +572,9 @@ model MarketingFile {
   contentType  String
   size         Int
   data         Bytes
+  // A small JPEG of the first page, slide, picture or video frame for the card, made on upload
+  // (PDFs and videos are drawn in the browser) or the first time a card asks for it.
+  thumbnail    Bytes?
   uploadedAt   DateTime @default(now())
 
   @@index([companyId, uploadedAt])
