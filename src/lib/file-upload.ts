@@ -1,4 +1,4 @@
-// Checks for office files people upload (quotes, quote templates). Vercel caps request bodies at 4.5 MB.
+// Checks for office files people upload (quotes, quote templates, marketing). Vercel caps request bodies at 4.5 MB.
 export const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
 const TYPES: Record<string, string> = {
@@ -17,6 +17,11 @@ const TYPES: Record<string, string> = {
   png: "image/png",
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  zip: "application/zip",
 };
 
 export const ACCEPTED_FILES = Object.keys(TYPES).map((e) => `.${e}`).join(",");
@@ -27,7 +32,7 @@ export async function readOfficeFile(
   if (!(file instanceof File) || file.size === 0) return { error: "Choose a file to upload" };
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
   const contentType = TYPES[ext];
-  if (!contentType) return { error: `${file.name}: only Word, PDF, Excel, PowerPoint, email and picture files can be added` };
+  if (!contentType) return { error: `${file.name}: only Word, PDF, Excel, PowerPoint, email, picture, video and zip files can be added` };
   if (file.size > MAX_FILE_BYTES) return { error: `${file.name} is over 4 MB. Try saving it smaller, or as a PDF.` };
   return { data: new Uint8Array(await file.arrayBuffer()), fileName: file.name, contentType };
 }
@@ -39,7 +44,9 @@ export const fileKind = (fileName: string) => {
   if (ext.startsWith("ppt")) return "PowerPoint";
   if (ext === "pdf") return "PDF";
   if (ext === "msg" || ext === "eml") return "Email";
-  if (["png", "jpg", "jpeg"].includes(ext)) return "Picture";
+  if (["png", "jpg", "jpeg", "gif", "webp"].includes(ext)) return "Picture";
+  if (ext === "mp4" || ext === "mov") return "Video";
+  if (ext === "zip") return "Zip";
   return "File";
 };
 

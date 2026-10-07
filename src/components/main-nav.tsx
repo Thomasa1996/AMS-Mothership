@@ -7,6 +7,7 @@ const TABS = [
   { href: "/crm", label: "CRM" },
   { href: "/operations", label: "Operations" },
   { href: "/sales", label: "Sales" },
+  { href: "/marketing", label: "Marketing" },
   { href: "/training", label: "Training" },
   { href: "/reports", label: "Revenue", adminOnly: true },
 ];

@@ -561,3 +561,18 @@ model QuoteTemplate {
 
   @@index([companyId])
 }
+
+// Files on the Marketing tab (brochures, logos, decks, photos). Admins add and remove them; everyone
+// can view and download.
+model MarketingFile {
+  id           String   @id @default(cuid())
+  companyId    String
+  uploadedById String?
+  fileName     String
+  contentType  String
+  size         Int
+  data         Bytes
+  uploadedAt   DateTime @default(now())
+
+  @@index([companyId, uploadedAt])
+}
