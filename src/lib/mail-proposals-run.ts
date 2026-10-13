@@ -49,7 +49,7 @@ export async function runMailProposalSync(companyId: string, budgetMs = 45_000):
             for (const a of await listAttachments(token, person.email, m.id)) {
               if (!looksLikeProposal(m.subject, a)) continue;
               const emailKey = `${m.internetMessageId}|${a.name}`;
-              if (await db.quoteDoc.findUnique({ where: { companyId_emailKey: { companyId, emailKey } }, select: { id: true } })) continue;
+              if (await db.quoteDoc.findFirst({ where: { companyId, emailKey }, select: { id: true } })) continue;
               const data = await attachmentBytes(token, person.email, m.id, a.id);
               const totalCents = findProposalTotal(await documentText(a.name, data));
               await db.quoteDoc.create({

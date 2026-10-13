@@ -563,7 +563,8 @@ model QuoteDoc {
   emailSubject String?
   emailTo      String?
 
-  @@unique([companyId, emailKey])
+  // An index, not a unique constraint, so `prisma db push` adds it to the live table without a data-loss prompt.
+  @@index([companyId, emailKey])
   @@index([companyId, ownerId, uploadedAt])
 }
 
