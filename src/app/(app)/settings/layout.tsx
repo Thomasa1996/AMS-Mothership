@@ -19,6 +19,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
                 { href: "/settings/smartsheet", label: "Smartsheet" },
                 { href: "/settings/apollo", label: "Apollo" },
                 { href: "/settings/powerbi", label: "Power BI" },
+                { href: "/settings/email", label: "Email proposals" },
               ]
             : []),
         ]}
