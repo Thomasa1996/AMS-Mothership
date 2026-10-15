@@ -4,6 +4,9 @@
 
 export const MIN_DECIDED = 3;
 
+// Stands in for a market id on proposals the rep marked as outside every market.
+export const OUT_OF_MARKET = "out";
+
 export type ForecastDoc = { branchId: string | null; totalCents: number | null; outcome: string | null };
 export type MarketForecast = {
   branchId: string | null;
