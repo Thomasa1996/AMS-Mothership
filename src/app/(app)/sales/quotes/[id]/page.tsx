@@ -58,6 +58,8 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
               <>
                 <PrintButton />
                 <Link href={`/sales/quotes/${quote.id}/edit`} className="btn">Edit</Link>
+                <Link href={`/sales/quotes/${quote.id}/work-order`} className="btn">Work order</Link>
+                <Link href={`/sales/quotes/${quote.id}/analysis`} className="btn">Cost analysis</Link>
                 <form action={duplicateQuote.bind(null, quote.id)}>
                   <button className="btn">Revise as new quote</button>
                 </form>

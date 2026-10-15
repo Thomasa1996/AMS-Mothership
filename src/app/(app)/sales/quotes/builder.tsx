@@ -3,6 +3,8 @@
 import { useMemo, useState, useTransition } from "react";
 import { formatCents, lineAmountCents, lineDetail, parseDollarsToCents } from "@/lib/quote-math";
 import type { SaveState } from "./actions";
+import { PlanEditor } from "./plan-editor";
+import { planDraftTotals, planInput, type PlanDraft } from "./plan-draft";
 
 export type RateOption = { id: string; category: string; name: string; unit: string; rateCents: number; notes: string | null };
 
@@ -50,6 +52,7 @@ export type QuoteDraft = {
   companyDuties: string;
   clientDuties: string;
   lines: DraftLine[];
+  plan: PlanDraft;
 };
 
 const MAX_LOGO_BYTES = 500 * 1024;
@@ -198,7 +201,9 @@ export function QuoteBuilder({
     const amount = quantity != null && rateCents != null ? lineAmountCents(quantity, rateCents) : null;
     return { quantity, rateCents, amount };
   });
-  const total = computed.reduce((s, c) => s + (c.amount ?? 0), 0);
+  const linesTotal = computed.reduce((s, c) => s + (c.amount ?? 0), 0);
+  const planTotals = planDraftTotals(draft.plan);
+  const total = linesTotal + planTotals.total;
 
   const rateGroups = useMemo(() => {
     const q = rateFilter.toLowerCase();
@@ -212,23 +217,28 @@ export function QuoteBuilder({
 
   const submit = () => {
     setError(null);
-    for (const [i, c] of computed.entries()) {
-      if (c.quantity == null) return setError(`Line ${i + 1}: enter a quantity`);
-      if (c.rateCents == null) return setError(`Line ${i + 1}: enter a dollar amount for the rate`);
+    // A price line left completely blank is dropped rather than blocking the save.
+    const kept = draft.lines.map((l, i) => ({ l, c: computed[i]! })).filter(({ l }) => l.description.trim() || l.rate.trim());
+    for (const [i, { c }] of kept.entries()) {
+      if (c.quantity == null) return setError(`Price line ${i + 1}: enter a quantity`);
+      if (c.rateCents == null) return setError(`Price line ${i + 1}: enter a dollar amount for the rate`);
     }
-    const { lines, ...rest } = draft;
+    const planResult = planInput(draft.plan);
+    if ("error" in planResult) return setError(planResult.error);
+    const { lines: _lines, plan: _plan, ...rest } = draft;
     const input = {
       ...rest,
       branchId: rest.branchId || null,
       clientLogo: rest.clientLogo || null,
-      lines: lines.map((l, i) => ({
+      lines: kept.map(({ l, c }) => ({
         category: l.category,
         description: l.description,
-        quantity: computed[i]!.quantity!,
+        quantity: c.quantity!,
         unit: l.unit,
-        rateCents: computed[i]!.rateCents!,
+        rateCents: c.rateCents!,
         note: l.note,
       })),
+      plan: planResult.plan,
     };
     startTransition(async () => {
       const result = await save(input);
@@ -314,8 +324,13 @@ export function QuoteBuilder({
         </div>
       </Section>
 
+      <PlanEditor plan={draft.plan} onChange={set("plan")} rates={rates} price={priceOf} />
+
       <Section title="Financial investment" aside={<span className="text-lg font-semibold">{formatCents(total)}</span>}>
         <Text label="Heading" value={draft.investmentHeading} onChange={set("investmentHeading")} />
+        <p className="mt-3 text-sm text-slate-500">
+          The schedule&rsquo;s labor and the materials are added automatically. Use price lines for anything else, such as a recycling fee or storage.
+        </p>
         <div className="mt-4 overflow-x-auto">
           <table className="table min-w-[860px]">
             <thead>
@@ -433,7 +448,8 @@ export function QuoteBuilder({
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-end gap-3">
           {error && <p className="mr-auto text-sm text-red-600">{error}</p>}
           <span className="text-sm text-slate-500">
-            {draft.lines.length} {draft.lines.length === 1 ? "line" : "lines"} · <strong className="text-slate-900">{formatCents(total)}</strong>
+            {draft.plan.days.length} {draft.plan.days.length === 1 ? "day" : "days"} · {draft.lines.length} price {draft.lines.length === 1 ? "line" : "lines"} ·{" "}
+            <strong className="text-slate-900">{formatCents(total)}</strong>
           </span>
           <button type="button" className="btn btn-primary" disabled={pending} onClick={submit}>
             {pending ? "Saving..." : submitLabel}

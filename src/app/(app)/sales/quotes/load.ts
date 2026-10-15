@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { templateFor } from "@/lib/quote-template";
 import { projectScope } from "@/lib/access";
+import { readPlan } from "@/lib/quote-plan";
+import { EMPTY_PLAN_DRAFT, planDraftFrom } from "./plan-draft";
 
 type Viewer = { id: string; companyId: string; role: string };
 import type { MarketOption, ProjectOption, QuoteDraft, RateOption } from "./builder";
@@ -71,7 +73,8 @@ export async function newQuoteDraft(user: Viewer, projectId?: string): Promise<Q
     optionalValuation: t.optionalValuation,
     companyDuties: t.companyDuties,
     clientDuties: t.clientDuties,
-    lines: [{ key: "line-0", category: "", description: "", quantity: "1", unit: "flat", rate: "", note: "" }],
+    lines: [],
+    plan: EMPTY_PLAN_DRAFT,
   };
 }
 
@@ -99,6 +102,7 @@ export function draftFromQuote(q: {
   companyDuties: string;
   clientDuties: string;
   lines: { id: string; category: string; description: string; quantity: number; unit: string; rateCents: number; note: string | null }[];
+  plan?: unknown;
 }): QuoteDraft {
   return {
     projectId: q.projectId,
@@ -132,6 +136,7 @@ export function draftFromQuote(q: {
       rate: (l.rateCents / 100).toFixed(2),
       note: l.note ?? "",
     })),
+    plan: planDraftFrom(readPlan(q.plan)),
   };
 }
 
