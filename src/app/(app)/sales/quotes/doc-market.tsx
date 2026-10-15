@@ -2,13 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { setQuoteDocMarket } from "./doc-actions";
+import { OUT_OF_MARKET } from "@/lib/market-forecast";
 
 // The market a quote file's work is in: a picker for its rep or an admin, plain text for everyone else.
 export function DocMarket({ id, branchId, markets, canEdit }: { id: string; branchId: string | null; markets: { id: string; name: string }[]; canEdit: boolean }) {
   const [value, setValue] = useState(branchId ?? "");
   const [error, setError] = useState(false);
   const [pending, start] = useTransition();
-  const name = markets.find((m) => m.id === value)?.name;
+  const name = value === OUT_OF_MARKET ? "Out of market" : markets.find((m) => m.id === value)?.name;
   if (!canEdit) return <span className="text-sm text-slate-600">{name ?? "—"}</span>;
   return (
     <select
@@ -31,6 +32,7 @@ export function DocMarket({ id, branchId, markets, canEdit }: { id: string; bran
       {markets.map((m) => (
         <option key={m.id} value={m.id}>{m.name}</option>
       ))}
+      <option value={OUT_OF_MARKET}>Out of market</option>
     </select>
   );
 }

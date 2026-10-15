@@ -10,7 +10,8 @@ import { QuoteDocUpload } from "./doc-upload";
 import { DocTotal } from "./doc-total";
 import { DocOutcome } from "./doc-outcome";
 import { DocMarket } from "./doc-market";
-import { forecastByMarket } from "@/lib/market-forecast";
+import { DocAccount } from "./doc-account";
+import { OUT_OF_MARKET, forecastByMarket } from "@/lib/market-forecast";
 import { QuoteDocPreview } from "./doc-preview";
 import { ReadDetails } from "./read-totals";
 import { unreadDetails } from "@/lib/quote-doc-totals";
@@ -38,16 +39,16 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
   const outcomeFilter = status in OUTCOMES ? { outcome: OUTCOMES[status] } : {};
   const ownerFilter = own ? user.id : rep || undefined;
 
-  const [docs, people, olderCount, unread, previewed, markets] = await Promise.all([
+  const [docs, people, olderCount, unread, previewed, markets, company] = await Promise.all([
     db.quoteDoc.findMany({
       where: {
         companyId: user.companyId,
         ...(ownerFilter ? { ownerId: ownerFilter } : {}),
         ...(q.trim() ? { fileName: { contains: q.trim(), mode: "insensitive" as const } } : {}),
         ...outcomeFilter,
-        ...(market === "none" ? { branchId: null } : market ? { branchId: market } : {}),
+        ...(market === "none" ? { branchId: null, outOfMarket: false } : market === OUT_OF_MARKET ? { outOfMarket: true } : market ? { branchId: market } : {}),
       },
-      select: { id: true, ownerId: true, fileName: true, size: true, uploadedAt: true, fileDate: true, branchId: true, totalCents: true, outcome: true, emailTo: true, emailSubject: true },
+      select: { id: true, ownerId: true, fileName: true, size: true, uploadedAt: true, fileDate: true, branchId: true, outOfMarket: true, totalCents: true, outcome: true, emailTo: true, emailSubject: true, hubspotSentAt: true, hubspotError: true, account: { select: { id: true, name: true, hubspotId: true } } },
       orderBy: { uploadedAt: "desc" },
     }),
     db.user.findMany({ where: { companyId: user.companyId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
@@ -57,8 +58,10 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
       .findMany({ where: { companyId: user.companyId, ...(ownerFilter ? { ownerId: ownerFilter } : {}), thumbnail: { not: null } }, select: { id: true } })
       .then((rows) => new Set(rows.map((r) => r.id))),
     db.branch.findMany({ where: { companyId: user.companyId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    db.company.findUniqueOrThrow({ where: { id: user.companyId }, select: { hubspotToken: true, hubspotQuotes: true } }),
   ]);
-  const marketName = new Map(markets.map((m) => [m.id, m.name]));
+  const hubspot = !!company.hubspotToken && company.hubspotQuotes;
+  const marketName = new Map([...markets.map((m) => [m.id, m.name] as const), [OUT_OF_MARKET, "Out of market"] as const]);
   const nameOf = new Map(people.map((p) => [p.id, p.name]));
   const withFiles = own
     ? []
@@ -80,7 +83,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
   const open = docs.filter((d) => !d.outcome);
   // Win rate counts decided proposals only: won out of won plus lost.
   const winRate = won.length + lost.length ? Math.round((100 * won.length) / (won.length + lost.length)) : null;
-  const byMarket = forecastByMarket(docs);
+  const byMarket = forecastByMarket(docs.map((d) => ({ ...d, branchId: d.outOfMarket ? OUT_OF_MARKET : d.branchId })));
   const pct = (r: number | null) => (r === null ? "—" : `${Math.round(r * 100)}%`);
 
   return (
@@ -163,6 +166,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
           <select className="input w-auto" name="market" defaultValue={market}>
             <option value="">All markets</option>
             {markets.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            <option value={OUT_OF_MARKET}>Out of market</option>
             <option value="none">No market</option>
           </select>
         )}
@@ -211,12 +215,20 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
                             Emailed to {d.emailTo}
                           </span>
                         )}
+                        <DocAccount
+                          id={d.id}
+                          account={d.account && { id: d.account.id, name: d.account.name, inHubSpot: !!d.account.hubspotId }}
+                          sent={!!d.hubspotSentAt}
+                          error={d.hubspotError}
+                          hubspot={hubspot}
+                          canEdit={d.ownerId === user.id || user.role === "ADMIN"}
+                        />
                       </td>
                       <td className="whitespace-nowrap text-right">
                         <DocTotal id={d.id} cents={d.totalCents} canEdit={d.ownerId === user.id || user.role === "ADMIN"} />
                       </td>
                       <td className="whitespace-nowrap">
-                        <DocMarket id={d.id} branchId={d.branchId} markets={markets} canEdit={d.ownerId === user.id || user.role === "ADMIN"} />
+                        <DocMarket id={d.id} branchId={d.outOfMarket ? OUT_OF_MARKET : d.branchId} markets={markets} canEdit={d.ownerId === user.id || user.role === "ADMIN"} />
                       </td>
                       <td className="whitespace-nowrap">
                         <DocOutcome id={d.id} outcome={d.outcome} canEdit={d.ownerId === user.id || user.role === "ADMIN"} />

@@ -32,6 +32,8 @@ model Company {
   // Set while a sync runs so two syncs can't overlap and create duplicates.
   hubspotSyncStartedAt DateTime?
   hubspotSyncResult String?
+  // Attach each quote file in Sales > Quotes to its client's company in HubSpot, as a note.
+  hubspotQuotes     Boolean   @default(false)
   // Smartsheet API token, encrypted, and which region's API it belongs to (us, eu, gov, au).
   smartsheetToken    String?
   smartsheetRegion   String  @default("us")
@@ -134,6 +136,7 @@ model Account {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  quoteDocs  QuoteDoc[]
   contacts   Contact[]
   projects   Project[]
   activities Activity[]
@@ -574,6 +577,17 @@ model QuoteDoc {
   branchId     String?
   branch       Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
   marketReadAt DateTime?
+  // Work outside every market, as the rep marks it (branchId is then blank).
+  outOfMarket  Boolean   @default(false)
+  // The client the quote is for (found from its email or text, or picked), and its copy in HubSpot.
+  accountId     String?
+  account       Account?  @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  accountReadAt DateTime?
+  hubspotFileId  String?
+  hubspotNoteId  String?
+  hubspotSentAt  DateTime?
+  hubspotClaimAt DateTime?
+  hubspotError   String?
   // A small JPEG shown beside the file: its first page or picture, or one the rep picks. PDFs are
   // drawn in the browser; the rest are made on the server.
   thumbnail   Bytes?

@@ -1,5 +1,5 @@
-// Minimal HubSpot CRM v3 client for the one-way sync (HubSpot -> Mothership).
-// Uses a private app access token with read scopes for companies, contacts, deals and owners.
+// Minimal HubSpot CRM v3 client: reads for the sync (HubSpot -> Mothership), using a private app access
+// token with read scopes for companies, contacts, deals and owners, plus the writes that send quote files.
 
 const API_BASE = process.env.HUBSPOT_API_BASE ?? "https://api.hubapi.com";
 
@@ -83,4 +83,49 @@ export async function listDealStages(token: string) {
     if (e instanceof HubSpotError && e.status === 403) return [];
     throw e;
   }
+}
+
+// Writes, for sending quote files to HubSpot (Sales > Quotes). These need more than the sync's read
+// scopes: files, and write for contacts (HubSpot files notes under it) and companies.
+async function post<T>(token: string, path: string, body: BodyInit, scope: string, json: boolean, attempt = 0): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, ...(json ? { "Content-Type": "application/json" } : {}) },
+    body,
+    cache: "no-store",
+  });
+  if (res.status === 429 && attempt < 3) {
+    await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+    return post(token, path, body, scope, json, attempt + 1);
+  }
+  if (!res.ok) {
+    if (res.status === 401) throw new HubSpotError("HubSpot didn't accept the key. Check it was copied in full and hasn't been rotated.", 401);
+    if (res.status === 403) {
+      throw new HubSpotError(`The HubSpot key is missing the ${scope} permission. In HubSpot, open the Mothership app, tick ${scope} on its Scopes tab and save.`, 403);
+    }
+    throw new HubSpotError(`HubSpot returned an error (${res.status}). It will be tried again.`, res.status);
+  }
+  return (await res.json()) as T;
+}
+
+// Uploads a file to HubSpot's file manager (private: only people signed in to HubSpot can open it).
+export async function uploadFile(token: string, fileName: string, contentType: string, data: Uint8Array, folderPath: string) {
+  const form = new FormData();
+  form.set("file", new Blob([new Uint8Array(data)], { type: contentType }), fileName);
+  form.set("folderPath", folderPath);
+  form.set("fileName", fileName.replace(/\.[^.]+$/, ""));
+  form.set("options", JSON.stringify({ access: "PRIVATE", overwrite: false, duplicateValidationStrategy: "NONE" }));
+  return post<{ id: string }>(token, "/files/v3/files", form, "files", false);
+}
+
+// HubSpot's own association type for a note on a company.
+const NOTE_TO_COMPANY = 190;
+
+// Adds a note to a company's timeline, with files attached.
+export async function createCompanyNote(token: string, companyId: string, html: string, when: Date, fileIds: string[]) {
+  const body = {
+    properties: { hs_timestamp: when.toISOString(), hs_note_body: html, hs_attachment_ids: fileIds.join(";") },
+    associations: [{ to: { id: companyId }, types: [{ associationCategory: "HUBSPOT_DEFINED", associationTypeId: NOTE_TO_COMPANY }] }],
+  };
+  return post<{ id: string }>(token, "/crm/v3/objects/notes", JSON.stringify(body), "crm.objects.contacts.write", true);
 }

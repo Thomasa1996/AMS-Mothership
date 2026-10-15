@@ -1,16 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { PICTURE_TYPES, makeThumbnail, toThumbnail } from "@/lib/thumbnail";
 import { readOfficeFile } from "@/lib/file-upload";
 import { documentDate, documentText } from "@/lib/doc-text";
 import { findProposalTotal } from "@/lib/proposal-total";
-import { marketForDoc, readQuoteDocDetails } from "@/lib/quote-doc-totals";
+import { accountForDoc, marketForDoc, readQuoteDocDetails } from "@/lib/quote-doc-totals";
+import { sendQuotesToHubSpot } from "@/lib/hubspot-quotes";
 import { limitedToOwn } from "@/lib/access";
 import { parseDollarsToCents } from "@/lib/quote-math";
 import type { FormState } from "@/lib/validation";
+import { OUT_OF_MARKET } from "@/lib/market-forecast";
 
 // One file per call, so each request stays under the upload size limit.
 export async function addQuoteDoc(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -20,6 +23,7 @@ export async function addQuoteDoc(_prev: FormState, formData: FormData): Promise
   const text = await documentText(file.fileName, file.data);
   const totalCents = findProposalTotal(text);
   const branchId = await marketForDoc(user.companyId, [file.fileName, text]);
+  const accountId = await accountForDoc(user.companyId, [], [file.fileName, text]);
   // PDFs come with a preview drawn in the browser; pictures and Office files are made here.
   const drawn = await drawnThumbnail(formData);
   const thumbnail = drawn ?? (await makeThumbnail(file.fileName, file.contentType, file.data));
@@ -37,9 +41,12 @@ export async function addQuoteDoc(_prev: FormState, formData: FormData): Promise
       fileDate: (await documentDate(file.fileName, file.data)) ?? computerDate(formData.get("lastModified")) ?? new Date(),
       branchId,
       marketReadAt: new Date(),
+      accountId,
+      accountReadAt: new Date(),
     },
   });
   revalidatePath("/sales/quotes");
+  if (accountId) after(() => sendQuietly(user.companyId));
   return { ok: true };
 }
 
@@ -70,7 +77,47 @@ export async function readMissingDetails(): Promise<number> {
   const user = await requireUser();
   const left = await readQuoteDocDetails(user.companyId, limitedToOwn(user) ? user.id : undefined, 25_000);
   revalidatePath("/sales/quotes");
+  after(() => sendQuietly(user.companyId));
   return left;
+}
+
+// Sends waiting quote files to HubSpot after the reply has gone back (when it's switched on). Problems
+// show in Settings > HubSpot, so they aren't reported here.
+async function sendQuietly(companyId: string) {
+  try {
+    await sendQuotesToHubSpot(companyId, 20_000);
+  } catch (e) {
+    console.error("Sending quotes to HubSpot failed", e);
+  }
+}
+
+// The client account a quote file is for ("" clears it). Same people as removing. A file already in
+// HubSpot stays where it was sent; one that isn't goes to its new account.
+export async function setQuoteDocAccount(id: string, accountId: string): Promise<FormState & { name?: string }> {
+  const user = await requireUser();
+  const account = accountId ? await db.account.findFirst({ where: { id: accountId, companyId: user.companyId }, select: { id: true, name: true } }) : null;
+  if (accountId && !account) return { error: "Account not found" };
+  const { count } = await db.quoteDoc.updateMany({
+    where: editable(user, id),
+    data: { accountId: account?.id ?? null, accountReadAt: new Date(), hubspotError: null },
+  });
+  if (!count) return { error: "Quote not found" };
+  revalidatePath("/sales/quotes");
+  if (account) after(() => sendQuietly(user.companyId));
+  return { ok: true, name: account?.name };
+}
+
+// Accounts whose name starts with or contains what was typed, for the account picker.
+export async function searchAccounts(q: string): Promise<{ id: string; name: string; inHubSpot: boolean }[]> {
+  const user = await requireUser();
+  const term = q.trim().slice(0, 100);
+  if (term.length < 2) return [];
+  return db.account.findMany({
+    where: { companyId: user.companyId, name: { contains: term, mode: "insensitive" } },
+    select: { id: true, name: true, hubspotId: true },
+    orderBy: { name: "asc" },
+    take: 8,
+  }).then((rows) => rows.map((r) => ({ id: r.id, name: r.name, inHubSpot: !!r.hubspotId })));
 }
 
 // The file's date on the rep's computer, sent along by the upload box. Today's date says nothing
@@ -125,11 +172,15 @@ export async function setQuoteDocOutcome(id: string, outcome: string): Promise<F
   return { ok: true };
 }
 
-// The market a quote file's work is in ("" clears it). Same people as removing.
+// The market a quote file's work is in, OUT_OF_MARKET for work outside them all ("" clears it). Same people as removing.
 export async function setQuoteDocMarket(id: string, branchId: string): Promise<FormState> {
   const user = await requireUser();
-  if (branchId && !(await db.branch.findFirst({ where: { id: branchId, companyId: user.companyId }, select: { id: true } }))) return { error: "Market not found" };
-  const { count } = await db.quoteDoc.updateMany({ where: editable(user, id), data: { branchId: branchId || null, marketReadAt: new Date() } });
+  const out = branchId === OUT_OF_MARKET;
+  if (branchId && !out && !(await db.branch.findFirst({ where: { id: branchId, companyId: user.companyId }, select: { id: true } }))) return { error: "Market not found" };
+  const { count } = await db.quoteDoc.updateMany({
+    where: editable(user, id),
+    data: { branchId: out ? null : branchId || null, outOfMarket: out, marketReadAt: new Date() },
+  });
   if (!count) return { error: "Quote not found" };
   revalidatePath("/sales/quotes");
   return { ok: true };
