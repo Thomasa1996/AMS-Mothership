@@ -62,6 +62,7 @@ export async function runMailProposalSync(companyId: string, budgetMs = 45_000):
                   data,
                   uploadedAt: new Date(m.sentDateTime),
                   totalCents,
+                  totalReadAt: new Date(),
                   emailKey,
                   emailSubject: m.subject.slice(0, 500) || null,
                   emailTo: m.to.join(", ").slice(0, 500) || null,

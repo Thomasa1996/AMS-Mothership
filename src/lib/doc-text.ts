@@ -1,12 +1,14 @@
 import "server-only";
+import ExcelJS from "exceljs";
 import JSZip from "jszip";
 
-// Plain text of a PDF or Word file, one line per line of the document, for reading a proposal's
+// Plain text of a PDF, Word or Excel file, one line per line of the document, for reading a proposal's
 // total. Returns "" for anything else or a file that can't be read.
 export async function documentText(fileName: string, data: Uint8Array): Promise<string> {
   try {
     if (/\.pdf$/i.test(fileName)) return await pdfText(data);
     if (/\.docx$/i.test(fileName)) return await docxText(data);
+    if (/\.xlsx$/i.test(fileName)) return await xlsxText(data);
   } catch {
     // A damaged or locked file just has no total read.
   }
@@ -45,4 +47,26 @@ async function docxText(data: Uint8Array): Promise<string> {
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'");
+}
+
+// One line per row, cells separated by spaces. Amounts formatted as currency get a "$", so they read
+// like the dollar figures in a PDF; plain numbers (hours, crew counts) don't.
+async function xlsxText(data: Uint8Array): Promise<string> {
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(data as unknown as ArrayBuffer);
+  const lines: string[] = [];
+  wb.eachSheet((sheet) => {
+    sheet.eachRow((row) => {
+      const cells: string[] = [];
+      row.eachCell((cell) => {
+        const v = cell.value as unknown;
+        const o = (v && typeof v === "object" ? v : {}) as { result?: unknown; text?: unknown; richText?: { text: string }[] };
+        const value = o.result !== undefined ? o.result : o.richText ? o.richText.map((t) => t.text).join("") : o.text !== undefined ? o.text : v;
+        if (typeof value === "number") cells.push(/[$]|currency|accounting/i.test(cell.numFmt ?? "") ? `$${value.toFixed(2)}` : String(value));
+        else if (value !== null && value !== undefined && typeof value !== "object") cells.push(String(value));
+      });
+      if (cells.length) lines.push(cells.join(" "));
+    });
+  });
+  return lines.join("\n");
 }

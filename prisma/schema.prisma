@@ -558,6 +558,8 @@ model QuoteDoc {
   uploadedAt  DateTime @default(now())
   // The proposal's total, read from the file when it can be, otherwise typed in. Blank when unknown.
   totalCents  Int?
+  // When Mothership last tried to read the total from the file; blank for files added before it could.
+  totalReadAt DateTime?
   // Set on files pulled from email: the message and attachment (so a file is pulled once), its subject and who it went to.
   emailKey     String?
   emailSubject String?

@@ -8,6 +8,11 @@ import { ConfirmButton } from "@/app/(app)/crm/forms";
 import { deleteQuoteDoc } from "./doc-actions";
 import { QuoteDocUpload } from "./doc-upload";
 import { DocTotal } from "./doc-total";
+import { ReadTotalsButton } from "./read-totals";
+import { unreadTotals } from "@/lib/quote-doc-totals";
+
+// Reading totals from earlier files runs in the request.
+export const maxDuration = 60;
 
 const TZ = "America/New_York";
 const monthLabel = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: TZ });
@@ -24,7 +29,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
   const { rep = "", q = "" } = await searchParams;
   const ownerFilter = own ? user.id : rep || undefined;
 
-  const [docs, people, olderCount] = await Promise.all([
+  const [docs, people, olderCount, unread] = await Promise.all([
     db.quoteDoc.findMany({
       where: {
         companyId: user.companyId,
@@ -36,6 +41,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
     }),
     db.user.findMany({ where: { companyId: user.companyId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
     db.quote.count({ where: quoteScope(user) }),
+    db.quoteDoc.count({ where: unreadTotals(user.companyId, own ? user.id : undefined) }),
   ]);
   const nameOf = new Map(people.map((p) => [p.id, p.name]));
   const withFiles = own
@@ -65,6 +71,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
             {docs.length} {docs.length === 1 ? "proposal" : "proposals"}
             {missing > 0 && <span className="text-amber-700"> · {missing} without a total, not counted</span>}
           </p>
+          {unread > 0 && <ReadTotalsButton count={unread} />}
         </div>
       )}
       <QuoteDocUpload />
