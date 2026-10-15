@@ -8,6 +8,7 @@ import { ConfirmButton } from "@/app/(app)/crm/forms";
 import { deleteQuoteDoc } from "./doc-actions";
 import { QuoteDocUpload } from "./doc-upload";
 import { DocTotal } from "./doc-total";
+import { DocOutcome } from "./doc-outcome";
 import { QuoteDocPreview } from "./doc-preview";
 import { ReadTotalsButton } from "./read-totals";
 import { unreadTotals } from "@/lib/quote-doc-totals";
@@ -24,10 +25,13 @@ const sumOf = (docs: { totalCents: number | null }[]) => docs.reduce((s, d) => s
 
 // Each rep's quote files, filed by the month they were added. Reps see their own; admins and
 // operations see everyone's and can narrow to one rep.
-export default async function QuotesPage({ searchParams }: { searchParams: Promise<{ rep?: string; q?: string }> }) {
+const OUTCOMES: Record<string, string | null> = { open: null, won: "WON", lost: "LOST" };
+
+export default async function QuotesPage({ searchParams }: { searchParams: Promise<{ rep?: string; q?: string; status?: string }> }) {
   const user = await requireUser();
   const own = limitedToOwn(user);
-  const { rep = "", q = "" } = await searchParams;
+  const { rep = "", q = "", status = "" } = await searchParams;
+  const outcomeFilter = status in OUTCOMES ? { outcome: OUTCOMES[status] } : {};
   const ownerFilter = own ? user.id : rep || undefined;
 
   const [docs, people, olderCount, unread, previewed] = await Promise.all([
@@ -36,8 +40,9 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
         companyId: user.companyId,
         ...(ownerFilter ? { ownerId: ownerFilter } : {}),
         ...(q.trim() ? { fileName: { contains: q.trim(), mode: "insensitive" as const } } : {}),
+        ...outcomeFilter,
       },
-      select: { id: true, ownerId: true, fileName: true, size: true, uploadedAt: true, totalCents: true, emailTo: true, emailSubject: true },
+      select: { id: true, ownerId: true, fileName: true, size: true, uploadedAt: true, totalCents: true, outcome: true, emailTo: true, emailSubject: true },
       orderBy: { uploadedAt: "desc" },
     }),
     db.user.findMany({ where: { companyId: user.companyId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
@@ -61,6 +66,11 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
   }
 
   const missing = docs.filter((d) => d.totalCents === null).length;
+  const won = docs.filter((d) => d.outcome === "WON");
+  const lost = docs.filter((d) => d.outcome === "LOST");
+  const open = docs.filter((d) => !d.outcome);
+  // Win rate counts decided proposals only: won out of won plus lost.
+  const winRate = won.length + lost.length ? Math.round((100 * won.length) / (won.length + lost.length)) : null;
 
   return (
     <div className="space-y-6">
@@ -68,11 +78,19 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
       {docs.length > 0 && (
         <div className="card flex flex-wrap items-baseline gap-x-6 gap-y-1 p-5">
           <div>
-            <p className="text-sm text-slate-500">Proposed revenue{q || rep ? " (filtered)" : ""}</p>
+            <p className="text-sm text-slate-500">Proposed revenue{q || rep || status ? " (filtered)" : ""}</p>
             <p className="text-2xl font-semibold tabular-nums">{money(sumOf(docs))}</p>
           </div>
+          <div>
+            <p className="text-sm text-slate-500">Won</p>
+            <p className="text-2xl font-semibold tabular-nums text-emerald-600">{money(sumOf(won))}</p>
+          </div>
+          <div>
+            <p className="text-sm text-slate-500">Win rate</p>
+            <p className="text-2xl font-semibold tabular-nums">{winRate === null ? "—" : `${winRate}%`}</p>
+          </div>
           <p className="text-sm text-slate-500">
-            {docs.length} {docs.length === 1 ? "proposal" : "proposals"}
+            {docs.length} {docs.length === 1 ? "proposal" : "proposals"}: {won.length} won, {lost.length} lost ({money(sumOf(lost))}), {open.length} open ({money(sumOf(open))})
             {missing > 0 && <span className="text-amber-700"> · {missing} without a total, not counted</span>}
           </p>
           {unread > 0 && <ReadTotalsButton count={unread} />}
@@ -88,13 +106,19 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
             {reps.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
         )}
+        <select className="input w-auto" name="status" defaultValue={status}>
+          <option value="">Won, lost and open</option>
+          <option value="open">Open</option>
+          <option value="won">Won</option>
+          <option value="lost">Lost</option>
+        </select>
         <button className="btn">Filter</button>
-        {(q || rep) && <Link href="/sales/quotes" className="text-sm text-slate-500 hover:text-slate-800">Clear</Link>}
+        {(q || rep || status) && <Link href="/sales/quotes" className="text-sm text-slate-500 hover:text-slate-800">Clear</Link>}
       </form>
 
       {months.length === 0 ? (
         <div className="card">
-          <EmptyState>{q || rep ? "No files match." : own ? "No quotes yet. Add your first files above." : "No quote files yet."}</EmptyState>
+          <EmptyState>{q || rep || status ? "No files match." : own ? "No quotes yet. Add your first files above." : "No quote files yet."}</EmptyState>
         </div>
       ) : (
         months.map((m) => (
@@ -130,6 +154,9 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
                       </td>
                       <td className="whitespace-nowrap text-right">
                         <DocTotal id={d.id} cents={d.totalCents} canEdit={d.ownerId === user.id || user.role === "ADMIN"} />
+                      </td>
+                      <td className="whitespace-nowrap">
+                        <DocOutcome id={d.id} outcome={d.outcome} canEdit={d.ownerId === user.id || user.role === "ADMIN"} />
                       </td>
                       {!own && <td className="whitespace-nowrap text-slate-600">{nameOf.get(d.ownerId) ?? "Former teammate"}</td>}
                       <td className="whitespace-nowrap text-slate-500">{dayLabel.format(d.uploadedAt)}</td>
