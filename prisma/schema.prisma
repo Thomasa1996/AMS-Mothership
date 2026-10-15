@@ -423,8 +423,9 @@ model Branch {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  rates  BranchRate[]
-  quotes Quote[]
+  rates     BranchRate[]
+  quotes    Quote[]
+  quoteDocs QuoteDoc[]
 
   // When the market photo was last set; the photo itself is in BranchPhoto.
   photoAt       DateTime?
@@ -522,7 +523,8 @@ model ProspectListItem {
 }
 
 // Training tab: a library of PDFs and links (videos, SharePoint pages) admins post for the team.
-// The PDF bytes live in TrainingFile so listing the library doesn't load them.
+// The PDF bytes live in TrainingFile so listing the library doesn't load them. thumbnail is the
+// small picture at the top of its card (a PDF's first page, a YouTube still, or one an admin picked).
 model TrainingItem {
   id          String        @id @default(cuid())
   companyId   String
@@ -532,6 +534,7 @@ model TrainingItem {
   url         String?
   fileName    String?
   size        Int?
+  thumbnail   Bytes?
   createdAt   DateTime      @default(now())
   file        TrainingFile?
 
@@ -562,6 +565,15 @@ model QuoteDoc {
   totalReadAt DateTime?
   // WON or LOST once the rep marks it; blank while the proposal is still open.
   outcome     String?
+  // When the file was made, for filing by month: the date saved inside it (Word, Excel, PowerPoint,
+  // PDF), else the file's date on the rep's computer, the email's send date, or when it was added.
+  // Blank until read for files added before this.
+  fileDate    DateTime?
+  // The market (branch) the work is in: found in the file's text, or picked by the rep. marketReadAt
+  // is when Mothership looked, so files it found nothing in aren't read again.
+  branchId     String?
+  branch       Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  marketReadAt DateTime?
   // A small JPEG shown beside the file: its first page or picture, or one the rep picks. PDFs are
   // drawn in the browser; the rest are made on the server.
   thumbnail   Bytes?
