@@ -4,6 +4,7 @@ import { EmptyState, PageHeader } from "@/components/ui";
 import { ConfirmButton } from "@/app/(app)/crm/forms";
 import { deleteTraining } from "./actions";
 import { AddTrainingForm } from "./forms";
+import { TrainingPreview } from "./preview";
 
 const sizeLabel = (bytes: number | null) => (bytes ? `${Math.max(1, Math.round(bytes / 1024)).toLocaleString()} KB` : "");
 const hostLabel = (url: string) => {
@@ -22,6 +23,9 @@ export default async function TrainingPage() {
     select: { id: true, title: true, category: true, description: true, url: true, fileName: true, size: true },
     orderBy: [{ category: "asc" }, { createdAt: "asc" }],
   });
+  const previewed = new Set(
+    (await db.trainingItem.findMany({ where: { companyId: user.companyId, thumbnail: { not: null } }, select: { id: true } })).map((i) => i.id),
+  );
   const sections = [...new Set(items.map((i) => i.category))];
 
   return (
@@ -41,26 +45,29 @@ export default async function TrainingPage() {
             {items
               .filter((i) => i.category === section)
               .map((i) => (
-                <div key={i.id} className="card flex flex-col gap-2 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-medium">{i.title}</h3>
-                    <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">{i.fileName ? "PDF" : "Link"}</span>
-                  </div>
-                  {i.description && <p className="whitespace-pre-line text-sm text-slate-600">{i.description}</p>}
-                  <div className="mt-auto flex items-center justify-between gap-3 pt-1 text-sm">
-                    {i.fileName ? (
-                      <a href={`/training-file/${i.id}`} target="_blank" rel="noopener" className="link">Open PDF <span className="text-slate-400">{sizeLabel(i.size)}</span></a>
-                    ) : (
-                      <a href={i.url!} target="_blank" rel="noopener noreferrer" className="link">Open {hostLabel(i.url!)}</a>
-                    )}
-                    {admin && (
-                      <ConfirmButton
-                        action={deleteTraining.bind(null, i.id)}
-                        label="Remove"
-                        confirmText={`Remove "${i.title}" from Training?`}
-                        className="text-slate-400 hover:text-red-600"
-                      />
-                    )}
+                <div key={i.id} className="card flex flex-col overflow-hidden">
+                  <TrainingPreview id={i.id} fileName={i.fileName} label={i.fileName ? "PDF" : hostLabel(i.url!)} saved={previewed.has(i.id)} admin={admin} />
+                  <div className="flex flex-1 flex-col gap-2 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="font-medium">{i.title}</h3>
+                      <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">{i.fileName ? "PDF" : "Link"}</span>
+                    </div>
+                    {i.description && <p className="whitespace-pre-line text-sm text-slate-600">{i.description}</p>}
+                    <div className="mt-auto flex items-center justify-between gap-3 pt-1 text-sm">
+                      {i.fileName ? (
+                        <a href={`/training-file/${i.id}`} target="_blank" rel="noopener" className="link">Open PDF <span className="text-slate-400">{sizeLabel(i.size)}</span></a>
+                      ) : (
+                        <a href={i.url!} target="_blank" rel="noopener noreferrer" className="link">Open {hostLabel(i.url!)}</a>
+                      )}
+                      {admin && (
+                        <ConfirmButton
+                          action={deleteTraining.bind(null, i.id)}
+                          label="Remove"
+                          confirmText={`Remove "${i.title}" from Training?`}
+                          className="text-slate-400 hover:text-red-600"
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

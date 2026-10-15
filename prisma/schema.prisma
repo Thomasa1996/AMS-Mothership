@@ -523,7 +523,8 @@ model ProspectListItem {
 }
 
 // Training tab: a library of PDFs and links (videos, SharePoint pages) admins post for the team.
-// The PDF bytes live in TrainingFile so listing the library doesn't load them.
+// The PDF bytes live in TrainingFile so listing the library doesn't load them. thumbnail is the
+// small picture at the top of its card (a PDF's first page, a YouTube still, or one an admin picked).
 model TrainingItem {
   id          String        @id @default(cuid())
   companyId   String
@@ -533,6 +534,7 @@ model TrainingItem {
   url         String?
   fileName    String?
   size        Int?
+  thumbnail   Bytes?
   createdAt   DateTime      @default(now())
   file        TrainingFile?
 

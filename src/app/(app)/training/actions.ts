@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { readPdf } from "@/lib/pdf-upload";
+import { PICTURE_TYPES, toThumbnail } from "@/lib/thumbnail";
 import type { FormState } from "@/lib/validation";
 
 async function requireAdmin() {
@@ -55,4 +56,31 @@ export async function deleteTraining(id: string) {
   const admin = await requireAdmin();
   await db.trainingItem.deleteMany({ where: { id, companyId: admin.companyId } });
   revalidatePath("/training");
+}
+
+async function pictureFrom(formData: FormData, field: string, keepTop: boolean) {
+  const f = formData.get(field);
+  if (!(f instanceof File) || f.size === 0 || f.size > 8 * 1024 * 1024) return null;
+  return toThumbnail(new Uint8Array(await f.arrayBuffer()), keepTop);
+}
+
+// Saves the first page a browser drew for a PDF that has no picture yet.
+export async function setTrainingThumbnail(id: string, formData: FormData) {
+  const admin = await requireAdmin();
+  const thumbnail = await pictureFrom(formData, "thumbnail", true);
+  if (thumbnail) await db.trainingItem.updateMany({ where: { id, companyId: admin.companyId, thumbnail: null }, data: { thumbnail } });
+}
+
+// A picture an admin picks for the card, in place of the PDF's first page or the video's still.
+export async function setTrainingPicture(id: string, formData: FormData): Promise<FormState> {
+  const admin = await requireAdmin();
+  const picture = formData.get("picture");
+  if (!(picture instanceof File) || !PICTURE_TYPES.has(picture.type)) return { error: "Pick a PNG, JPEG, GIF or WebP picture" };
+  if (picture.size > 4 * 1024 * 1024) return { error: "That picture is over 4 MB" };
+  const thumbnail = await pictureFrom(formData, "picture", false);
+  if (!thumbnail) return { error: "That picture couldn't be read" };
+  const { count } = await db.trainingItem.updateMany({ where: { id, companyId: admin.companyId }, data: { thumbnail } });
+  if (!count) return { error: "Training not found" };
+  revalidatePath("/training");
+  return { ok: true };
 }
