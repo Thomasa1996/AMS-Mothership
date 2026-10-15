@@ -7,8 +7,9 @@ import { requireUser } from "@/lib/auth";
 import { closedAtFor, stageLabel } from "@/lib/constants";
 import { projectScope, quoteScope } from "@/lib/access";
 import { firstError } from "@/lib/validation";
-import { QUOTE_STATUS_IDS, QuoteInput, formatCents, lineAmountCents, quoteStatusLabel, quoteTotalCents } from "@/lib/quote-math";
+import { QUOTE_STATUS_IDS, QuoteInput, formatCents, fullQuoteTotalCents, lineAmountCents, quoteStatusLabel } from "@/lib/quote-math";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 
 export type SaveState = { error?: string };
 
@@ -52,7 +53,7 @@ export async function createQuote(input: unknown): Promise<SaveState> {
           companyId: user.companyId,
           number: (last._max.number ?? 1000) + 1,
           createdById: user.id,
-          totalCents: quoteTotalCents(lines),
+          totalCents: fullQuoteTotalCents(lines, fields.plan),
           lines: { create: lineRows(lines) },
         },
       });
@@ -87,7 +88,7 @@ export async function updateQuote(id: string, input: unknown): Promise<SaveState
       db.quoteLine.deleteMany({ where: { quoteId: id } }),
       db.quote.update({
         where: { id },
-        data: { ...fields, totalCents: quoteTotalCents(lines), lines: { create: lineRows(lines) } },
+        data: { ...fields, totalCents: fullQuoteTotalCents(lines, fields.plan), lines: { create: lineRows(lines) } },
       }),
     ]);
   } catch (e) {
@@ -152,6 +153,7 @@ export async function duplicateQuote(id: string) {
     const copy = await tx.quote.create({
       data: {
         ...rest,
+        plan: rest.plan ?? Prisma.JsonNull,
         title: `${quote.title} (revised)`,
         status: "DRAFT",
         number: (last._max.number ?? 1000) + 1,

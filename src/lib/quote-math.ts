@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { QuotePlan, planTotalCents } from "./quote-plan";
 
 // Quote money math. Everything is in integer cents so totals never drift.
 
@@ -97,7 +98,16 @@ export const QuoteInput = z.object({
   optionalValuation: optional(),
   companyDuties: text(),
   clientDuties: text(),
-  lines: z.array(QuoteLineInput).min(1, "Add at least one price line"),
+  lines: z.array(QuoteLineInput).default([]),
+  plan: QuotePlan.default({}),
+}).refine((q) => q.lines.length > 0 || q.plan.days.length > 0 || q.plan.materials.length > 0, {
+  message: "Add at least one price line, day or material",
+  path: ["lines"],
 });
+
+// Whole-quote total: the manual price lines plus the schedule's labor and the materials.
+export function fullQuoteTotalCents(lines: { quantity: number; rateCents: number }[], plan: Parameters<typeof planTotalCents>[0]): number {
+  return quoteTotalCents(lines) + planTotalCents(plan);
+}
 
 export type QuoteInputType = z.input<typeof QuoteInput>;

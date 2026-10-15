@@ -377,6 +377,9 @@ model Quote {
   // Quotes a rep wrote elsewhere (Word) and uploaded as a PDF, instead of building here.
   uploaded            Boolean   @default(false)
 
+  // Day-by-day schedule with crew, materials and equipment, travel planner and assumptions (src/lib/quote-plan.ts).
+  plan                Json?
+
   lines QuoteLine[]
   file  QuoteFile?
 

@@ -8,6 +8,10 @@ What's built so far, following the [product plan](https://claude.ai/code/artifac
 - **Sales > Quotes** (Phase 2): builds Apple Moving's "Project Recommendation Plan" proposal (cover, scope,
   financial investment, billing confirmation, terms) from the rate card and quote template. Print / Save PDF
   produces the 5-page document. Marking a quote sent moves the project to Quoted; accepting books it.
+  Quotes can carry a day-by-day schedule (date, start time, addresses, crew by role at rate-card rates, hours, trucks),
+  a materials and equipment list (priced or free rental), a travel planner that adds a 25% truck buffer to car drive
+  time and works back from the arrival time, and assumptions. Each quote also has an internal cost analysis
+  (blended rate per man, load-and-go and all-in cost per truckload) and a printable crew work order (`src/lib/quote-plan.ts`).
 - **Sales > Rate card**: the 2026 standard commercial rate sheet, editable under Settings.
 - **Sales > Vendors**: the vendor directory, imported from the Excel vendor file (one sheet per category).
 - **Settings**: profile (title and signature for quotes), team and roles, rate card, quote template and logo.
