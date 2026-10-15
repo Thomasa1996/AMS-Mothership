@@ -8,6 +8,7 @@ import { ConfirmButton } from "@/app/(app)/crm/forms";
 import { deleteQuoteDoc } from "./doc-actions";
 import { QuoteDocUpload } from "./doc-upload";
 import { DocTotal } from "./doc-total";
+import { QuoteDocPreview } from "./doc-preview";
 import { ReadTotalsButton } from "./read-totals";
 import { unreadTotals } from "@/lib/quote-doc-totals";
 
@@ -29,7 +30,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
   const { rep = "", q = "" } = await searchParams;
   const ownerFilter = own ? user.id : rep || undefined;
 
-  const [docs, people, olderCount, unread] = await Promise.all([
+  const [docs, people, olderCount, unread, previewed] = await Promise.all([
     db.quoteDoc.findMany({
       where: {
         companyId: user.companyId,
@@ -42,6 +43,9 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
     db.user.findMany({ where: { companyId: user.companyId }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
     db.quote.count({ where: quoteScope(user) }),
     db.quoteDoc.count({ where: unreadTotals(user.companyId, own ? user.id : undefined) }),
+    db.quoteDoc
+      .findMany({ where: { companyId: user.companyId, ...(ownerFilter ? { ownerId: ownerFilter } : {}), thumbnail: { not: null } }, select: { id: true } })
+      .then((rows) => new Set(rows.map((r) => r.id))),
   ]);
   const nameOf = new Map(people.map((p) => [p.id, p.name]));
   const withFiles = own
@@ -106,6 +110,15 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
                 <tbody>
                   {m.docs.map((d) => (
                     <tr key={d.id}>
+                      <td className="w-20 align-top">
+                        <QuoteDocPreview
+                          id={d.id}
+                          fileName={d.fileName}
+                          kind={fileKind(d.fileName)}
+                          saved={previewed.has(d.id)}
+                          canEdit={d.ownerId === user.id || user.role === "ADMIN"}
+                        />
+                      </td>
                       <td className="min-w-0">
                         <a href={`/quote-doc/${d.id}`} className="link break-all">{d.fileName}</a>
                         <span className="ml-2 text-xs text-slate-500">{fileKind(d.fileName)} · {sizeLabel(d.size)}</span>

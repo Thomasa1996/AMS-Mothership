@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { PICTURE_TYPES, makeThumbnail, toThumbnail } from "@/lib/thumbnail";
 import { readOfficeFile } from "@/lib/file-upload";
 import { documentText } from "@/lib/doc-text";
 import { findProposalTotal } from "@/lib/proposal-total";
@@ -17,8 +18,21 @@ export async function addQuoteDoc(_prev: FormState, formData: FormData): Promise
   const file = await readOfficeFile(formData.get("file"));
   if ("error" in file) return file;
   const totalCents = findProposalTotal(await documentText(file.fileName, file.data));
+  // PDFs come with a preview drawn in the browser; pictures and Office files are made here.
+  const drawn = await drawnThumbnail(formData);
+  const thumbnail = drawn ?? (await makeThumbnail(file.fileName, file.contentType, file.data));
   await db.quoteDoc.create({
-    data: { companyId: user.companyId, ownerId: user.id, fileName: file.fileName, contentType: file.contentType, size: file.data.length, data: file.data, totalCents, totalReadAt: new Date() },
+    data: {
+      companyId: user.companyId,
+      ownerId: user.id,
+      fileName: file.fileName,
+      contentType: file.contentType,
+      size: file.data.length,
+      data: file.data,
+      totalCents,
+      totalReadAt: new Date(),
+      thumbnail,
+    },
   });
   revalidatePath("/sales/quotes");
   return { ok: true };
@@ -51,4 +65,37 @@ export async function readMissingTotals(_prev: FormState & { message?: string })
   const result = await readQuoteDocTotals(user.companyId, limitedToOwn(user) ? user.id : undefined);
   revalidatePath("/sales/quotes");
   return { ok: true, message: result };
+}
+
+async function drawnThumbnail(formData: FormData, field = "thumbnail") {
+  const drawn = formData.get(field);
+  if (!(drawn instanceof File) || drawn.size === 0 || drawn.size > 8 * 1024 * 1024) return null;
+  return toThumbnail(new Uint8Array(await drawn.arrayBuffer()), false);
+}
+
+const editable = (user: { id: string; companyId: string; role: string }, id: string) => ({
+  id,
+  companyId: user.companyId,
+  ...(user.role === "ADMIN" ? {} : { ownerId: user.id }),
+});
+
+// Saves the preview a browser drew for a PDF that has none yet.
+export async function saveDrawnQuoteThumbnail(id: string, formData: FormData) {
+  const user = await requireUser();
+  const thumbnail = await drawnThumbnail(formData);
+  if (thumbnail) await db.quoteDoc.updateMany({ where: { ...editable(user, id), thumbnail: null }, data: { thumbnail } });
+}
+
+// A picture the rep picks for the file (a photo of the site, the client's logo), in place of its first page.
+export async function setQuoteDocPicture(id: string, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const picture = formData.get("picture");
+  if (!(picture instanceof File) || !PICTURE_TYPES.has(picture.type)) return { error: "Pick a PNG, JPEG, GIF or WebP picture" };
+  if (picture.size > 4 * 1024 * 1024) return { error: "That picture is over 4 MB" };
+  const thumbnail = await drawnThumbnail(formData, "picture");
+  if (!thumbnail) return { error: "That picture couldn't be read" };
+  const { count } = await db.quoteDoc.updateMany({ where: editable(user, id), data: { thumbnail } });
+  if (!count) return { error: "Quote not found" };
+  revalidatePath("/sales/quotes");
+  return { ok: true };
 }

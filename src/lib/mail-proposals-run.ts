@@ -3,6 +3,7 @@ import { db } from "./db";
 import { open } from "./secret-box";
 import { documentText } from "./doc-text";
 import { contentTypeFor } from "./file-upload";
+import { makeThumbnail } from "./thumbnail";
 import { findProposalTotal } from "./proposal-total";
 import { formatCents } from "./quote-math";
 import { MailError, attachmentBytes, getMailToken, listAttachments, looksLikeProposal, sentWithAttachments, type MailCreds } from "./mail-graph";
@@ -52,6 +53,8 @@ export async function runMailProposalSync(companyId: string, budgetMs = 45_000):
               if (await db.quoteDoc.findFirst({ where: { companyId, emailKey }, select: { id: true } })) continue;
               const data = await attachmentBytes(token, person.email, m.id, a.id);
               const totalCents = findProposalTotal(await documentText(a.name, data));
+              // Word and Excel previews are made here; a PDF's is drawn the first time someone sees it.
+              const thumbnail = await makeThumbnail(a.name, contentTypeFor(a.name), data);
               await db.quoteDoc.create({
                 data: {
                   companyId,
@@ -63,6 +66,7 @@ export async function runMailProposalSync(companyId: string, budgetMs = 45_000):
                   uploadedAt: new Date(m.sentDateTime),
                   totalCents,
                   totalReadAt: new Date(),
+                  thumbnail,
                   emailKey,
                   emailSubject: m.subject.slice(0, 500) || null,
                   emailTo: m.to.join(", ").slice(0, 500) || null,
