@@ -99,3 +99,13 @@ export async function setQuoteDocPicture(id: string, formData: FormData): Promis
   revalidatePath("/sales/quotes");
   return { ok: true };
 }
+
+// Marks a quote file won or lost ("" puts it back to open). Same people as removing.
+export async function setQuoteDocOutcome(id: string, outcome: string): Promise<FormState> {
+  const user = await requireUser();
+  if (!["", "WON", "LOST"].includes(outcome)) return { error: "Pick Won, Lost or Open" };
+  const { count } = await db.quoteDoc.updateMany({ where: editable(user, id), data: { outcome: outcome || null } });
+  if (!count) return { error: "Quote not found" };
+  revalidatePath("/sales/quotes");
+  return { ok: true };
+}
