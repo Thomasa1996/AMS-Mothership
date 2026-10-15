@@ -52,6 +52,14 @@ model Company {
   powerbiRevenue     String?
   powerbiSyncedAt    DateTime?
   powerbiSyncResult  String?
+  // Microsoft 365 app that reads proposals out of reps' Sent Items (Settings > Email proposals),
+  // and the outcome of the last pull. The secret is sealed. mailSince is how far back the first pull goes.
+  mailTenantId       String?
+  mailClientId       String?
+  mailSecret         String?
+  mailSince          DateTime?
+  mailSyncedAt       DateTime?
+  mailSyncResult     String?
   rateCardNotes              String?
 
   users      User[]
@@ -87,6 +95,10 @@ model User {
   repReportUrl String?
   // Admins who also sell are listed on Revenue > Sales reps only when this is on.
   onRepBoard   Boolean  @default(false)
+  // Proposals are pulled from this person's Sent Items when on; mailCursor is the send time of the
+  // last email already looked at.
+  mailProposals Boolean  @default(false)
+  mailCursor    DateTime?
   // false once an admin removes them from the team: they can't sign in, but their history stays.
   active       Boolean  @default(true)
   // Optional background picture behind the app (a JPEG data URL), served by /user-background/[id].
@@ -533,7 +545,8 @@ model TrainingFile {
   data   Bytes
 }
 
-// A file a rep drops into Sales > Quotes (their Word, PDF or Excel quote). Listed by the month it was added.
+// A file a rep drops into Sales > Quotes (their Word, PDF or Excel quote), or one pulled from their
+// sent email. Listed by the month it was added (for an email, the month it was sent).
 model QuoteDoc {
   id          String   @id @default(cuid())
   companyId   String
@@ -543,7 +556,20 @@ model QuoteDoc {
   size        Int
   data        Bytes
   uploadedAt  DateTime @default(now())
+  // The proposal's total, read from the file when it can be, otherwise typed in. Blank when unknown.
+  totalCents  Int?
+  // When Mothership last tried to read the total from the file; blank for files added before it could.
+  totalReadAt DateTime?
+  // A small JPEG shown beside the file: its first page or picture, or one the rep picks. PDFs are
+  // drawn in the browser; the rest are made on the server.
+  thumbnail   Bytes?
+  // Set on files pulled from email: the message and attachment (so a file is pulled once), its subject and who it went to.
+  emailKey     String?
+  emailSubject String?
+  emailTo      String?
 
+  // An index, not a unique constraint, so `prisma db push` adds it to the live table without a data-loss prompt.
+  @@index([companyId, emailKey])
   @@index([companyId, ownerId, uploadedAt])
 }
 

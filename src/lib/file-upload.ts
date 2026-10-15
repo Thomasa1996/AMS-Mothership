@@ -24,6 +24,8 @@ const TYPES: Record<string, string> = {
   zip: "application/zip",
 };
 
+export const contentTypeFor = (fileName: string) => TYPES[fileName.split(".").pop()?.toLowerCase() ?? ""] ?? "application/octet-stream";
+
 export const ACCEPTED_FILES = Object.keys(TYPES).map((e) => `.${e}`).join(",");
 
 export async function readOfficeFile(
