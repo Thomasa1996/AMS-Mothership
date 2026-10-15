@@ -19,6 +19,13 @@ export function QuoteDocPreview({ id, fileName, kind, saved, canEdit }: { id: st
   const box = useRef<HTMLDivElement>(null);
   const picker = useRef<HTMLInputElement>(null);
   const made = useRef<string | null>(null);
+  const img = useRef<HTMLImageElement>(null);
+
+  // A picture that failed to load before this mounted never fires onError, so check it once here.
+  useEffect(() => {
+    const el = img.current;
+    if (el && el.complete && el.naturalWidth === 0) setFailed(true);
+  }, [src, version]);
 
   useEffect(() => () => {
     if (made.current) URL.revokeObjectURL(made.current);
@@ -82,7 +89,7 @@ export function QuoteDocPreview({ id, fileName, kind, saved, canEdit }: { id: st
         <div ref={box} className="flex h-20 w-16 items-center justify-center overflow-hidden rounded border border-slate-200 bg-slate-50">
           {src && !failed ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={version ? `${src}?v=${version}` : src} alt="" loading="lazy" className="h-full w-full object-cover object-top" onError={() => setFailed(true)} />
+            <img ref={img} src={version ? `${src}?v=${version}` : src} alt="" loading="lazy" className="h-full w-full object-cover object-top" onError={() => setFailed(true)} />
           ) : (
             <span className="px-1 text-center text-[10px] font-medium text-slate-500">{!failed && drawable ? "..." : kind}</span>
           )}

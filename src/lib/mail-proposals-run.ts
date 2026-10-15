@@ -1,9 +1,10 @@
 import "server-only";
 import { db } from "./db";
 import { open } from "./secret-box";
-import { documentText } from "./doc-text";
+import { documentDate, documentText } from "./doc-text";
 import { contentTypeFor } from "./file-upload";
 import { makeThumbnail } from "./thumbnail";
+import { companyMarkets, marketForDoc } from "./quote-doc-totals";
 import { findProposalTotal } from "./proposal-total";
 import { formatCents } from "./quote-math";
 import { MailError, attachmentBytes, getMailToken, listAttachments, looksLikeProposal, sentWithAttachments, type MailCreds } from "./mail-graph";
@@ -31,6 +32,7 @@ export async function runMailProposalSync(companyId: string, budgetMs = 45_000):
   ]);
   if (!people.length) return { ok: false, message: "Nobody is switched on yet. Tick whose sent email to read." };
   const since = company.mailSince ?? defaultMailSince();
+  const markets = await companyMarkets(companyId);
 
   let ok = true;
   let added = 0;
@@ -52,7 +54,9 @@ export async function runMailProposalSync(companyId: string, budgetMs = 45_000):
               const emailKey = `${m.internetMessageId}|${a.name}`;
               if (await db.quoteDoc.findFirst({ where: { companyId, emailKey }, select: { id: true } })) continue;
               const data = await attachmentBytes(token, person.email, m.id, a.id);
-              const totalCents = findProposalTotal(await documentText(a.name, data));
+              const text = await documentText(a.name, data);
+              const totalCents = findProposalTotal(text);
+              const branchId = await marketForDoc(companyId, [a.name, m.subject, m.to.join(" "), text], markets);
               // Word and Excel previews are made here; a PDF's is drawn the first time someone sees it.
               const thumbnail = await makeThumbnail(a.name, contentTypeFor(a.name), data);
               await db.quoteDoc.create({
@@ -67,6 +71,9 @@ export async function runMailProposalSync(companyId: string, budgetMs = 45_000):
                   totalCents,
                   totalReadAt: new Date(),
                   thumbnail,
+                  fileDate: (await documentDate(a.name, data)) ?? new Date(m.sentDateTime),
+                  branchId,
+                  marketReadAt: new Date(),
                   emailKey,
                   emailSubject: m.subject.slice(0, 500) || null,
                   emailTo: m.to.join(", ").slice(0, 500) || null,

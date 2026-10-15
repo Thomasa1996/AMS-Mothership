@@ -5,9 +5,9 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { PICTURE_TYPES, makeThumbnail, toThumbnail } from "@/lib/thumbnail";
 import { readOfficeFile } from "@/lib/file-upload";
-import { documentText } from "@/lib/doc-text";
+import { documentDate, documentText } from "@/lib/doc-text";
 import { findProposalTotal } from "@/lib/proposal-total";
-import { readQuoteDocTotals } from "@/lib/quote-doc-totals";
+import { marketForDoc, readQuoteDocDetails } from "@/lib/quote-doc-totals";
 import { limitedToOwn } from "@/lib/access";
 import { parseDollarsToCents } from "@/lib/quote-math";
 import type { FormState } from "@/lib/validation";
@@ -17,7 +17,9 @@ export async function addQuoteDoc(_prev: FormState, formData: FormData): Promise
   const user = await requireUser();
   const file = await readOfficeFile(formData.get("file"));
   if ("error" in file) return file;
-  const totalCents = findProposalTotal(await documentText(file.fileName, file.data));
+  const text = await documentText(file.fileName, file.data);
+  const totalCents = findProposalTotal(text);
+  const branchId = await marketForDoc(user.companyId, [file.fileName, text]);
   // PDFs come with a preview drawn in the browser; pictures and Office files are made here.
   const drawn = await drawnThumbnail(formData);
   const thumbnail = drawn ?? (await makeThumbnail(file.fileName, file.contentType, file.data));
@@ -32,6 +34,9 @@ export async function addQuoteDoc(_prev: FormState, formData: FormData): Promise
       totalCents,
       totalReadAt: new Date(),
       thumbnail,
+      fileDate: (await documentDate(file.fileName, file.data)) ?? computerDate(formData.get("lastModified")) ?? new Date(),
+      branchId,
+      marketReadAt: new Date(),
     },
   });
   revalidatePath("/sales/quotes");
@@ -59,12 +64,22 @@ export async function setQuoteDocTotal(id: string, value: string): Promise<FormS
   return { ok: true };
 }
 
-// Reads totals from files added before Mothership read them on upload: the viewer's own, or everyone's for those who see every rep.
-export async function readMissingTotals(_prev: FormState & { message?: string }): Promise<FormState & { message?: string }> {
+// Reads totals and dates from files added before Mothership read them on upload: the viewer's own,
+// or everyone's for those who see every rep. Returns how many are left.
+export async function readMissingDetails(): Promise<number> {
   const user = await requireUser();
-  const result = await readQuoteDocTotals(user.companyId, limitedToOwn(user) ? user.id : undefined);
+  const left = await readQuoteDocDetails(user.companyId, limitedToOwn(user) ? user.id : undefined, 25_000);
   revalidatePath("/sales/quotes");
-  return { ok: true, message: result };
+  return left;
+}
+
+// The file's date on the rep's computer, sent along by the upload box. Today's date says nothing
+// (a freshly saved copy), so only an earlier one counts.
+function computerDate(raw: FormDataEntryValue | null): Date | null {
+  const ms = Number(raw);
+  if (!Number.isFinite(ms) || ms <= 0) return null;
+  const d = new Date(ms);
+  return d.getUTCFullYear() >= 1990 && Date.now() - ms > 60_000 && ms <= Date.now() ? d : null;
 }
 
 async function drawnThumbnail(formData: FormData, field = "thumbnail") {
@@ -105,6 +120,16 @@ export async function setQuoteDocOutcome(id: string, outcome: string): Promise<F
   const user = await requireUser();
   if (!["", "WON", "LOST"].includes(outcome)) return { error: "Pick Won, Lost or Open" };
   const { count } = await db.quoteDoc.updateMany({ where: editable(user, id), data: { outcome: outcome || null } });
+  if (!count) return { error: "Quote not found" };
+  revalidatePath("/sales/quotes");
+  return { ok: true };
+}
+
+// The market a quote file's work is in ("" clears it). Same people as removing.
+export async function setQuoteDocMarket(id: string, branchId: string): Promise<FormState> {
+  const user = await requireUser();
+  if (branchId && !(await db.branch.findFirst({ where: { id: branchId, companyId: user.companyId }, select: { id: true } }))) return { error: "Market not found" };
+  const { count } = await db.quoteDoc.updateMany({ where: editable(user, id), data: { branchId: branchId || null, marketReadAt: new Date() } });
   if (!count) return { error: "Quote not found" };
   revalidatePath("/sales/quotes");
   return { ok: true };

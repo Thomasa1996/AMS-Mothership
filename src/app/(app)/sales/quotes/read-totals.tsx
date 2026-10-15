@@ -1,18 +1,38 @@
 "use client";
 
-import type { FormState } from "@/lib/validation";
-import { useFormAction } from "@/lib/use-form-action";
-import { readMissingTotals } from "./doc-actions";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { readMissingDetails } from "./doc-actions";
 
-// Shown while some files were added before Mothership read totals from them.
-export function ReadTotalsButton({ count }: { count: number }) {
-  const { state, onSubmit, pending } = useFormAction<FormState & { message?: string }>(readMissingTotals, {});
-  return (
-    <form onSubmit={onSubmit} className="flex flex-wrap items-center gap-3">
-      <button className="btn" disabled={pending}>
-        {pending ? "Reading files..." : `Read totals from ${count} earlier ${count === 1 ? "file" : "files"}`}
-      </button>
-      {state.message && <span className="text-sm text-slate-600">{state.message}</span>}
-    </form>
-  );
+// Shown while some files were added before Mothership read their totals and dates: reads them as
+// soon as the page opens, a batch at a time, then refreshes the list.
+export function ReadDetails({ count }: { count: number }) {
+  const router = useRouter();
+  const [left, setLeft] = useState(count);
+  const [failed, setFailed] = useState(false);
+  const started = useRef(false);
+
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    (async () => {
+      let remaining = count;
+      for (let round = 0; round < 20 && remaining > 0; round++) {
+        try {
+          const next = await readMissingDetails();
+          if (next >= remaining && round > 0) break;
+          remaining = next;
+          setLeft(next);
+        } catch {
+          setFailed(true);
+          break;
+        }
+      }
+      router.refresh();
+    })();
+  }, [count, router]);
+
+  if (failed) return <p className="text-sm text-amber-700">Couldn&apos;t read some earlier files. Reload to try again.</p>;
+  if (!left) return null;
+  return <p className="text-sm text-slate-500">Reading totals and dates from {left} earlier {left === 1 ? "file" : "files"}...</p>;
 }

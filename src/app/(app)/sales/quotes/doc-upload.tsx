@@ -21,6 +21,7 @@ export function QuoteDocUpload() {
     for (const f of [...files]) {
       const form = new FormData();
       form.set("file", f);
+      form.set("lastModified", String(f.lastModified));
       if (drawnKind(f.name) === "pdf") {
         const preview = await drawPreview(f.name, f);
         if (preview) form.set("thumbnail", preview, "preview.jpg");
@@ -50,7 +51,7 @@ export function QuoteDocUpload() {
     >
       <div className="min-w-0 flex-1">
         <p className="font-medium">Add quotes</p>
-        <p className="text-sm text-slate-500">Drag files here or pick them. Word, PDF, Excel and email files up to 4 MB each. They file themselves under this month.</p>
+        <p className="text-sm text-slate-500">Drag files here or pick them. Word, PDF, Excel and email files up to 4 MB each. They file themselves under the month each file was made.</p>
       </div>
       <label className={`btn btn-primary ${busy ? "pointer-events-none opacity-60" : "cursor-pointer"}`}>
         {busy ? "Uploading..." : "Choose files"}
