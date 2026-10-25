@@ -8,6 +8,7 @@ export default function SalesLayout({ children }: { children: React.ReactNode })
           { href: "/sales/quotes", label: "Quotes" },
           { href: "/sales/quote-templates", label: "Quote templates" },
           { href: "/sales/rates", label: "Rate card" },
+          { href: "/sales/sign", label: "Sign documents" },
           { href: "/sales/vendors", label: "Vendors" },
           { href: "/sales/warehouses", label: "Warehouses" },
           { href: "/sales/new-business", label: "New Business Development" },
