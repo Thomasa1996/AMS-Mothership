@@ -633,3 +633,18 @@ model MarketingFile {
 
   @@index([companyId, uploadedAt])
 }
+
+// A PDF someone signed on Sales > Sign documents: their saved signature, name, title, company and the
+// date stamped onto a page. Only the signed copy is kept. Reps see their own; admins and operations see everyone's.
+model SignedDocument {
+  id         String   @id @default(cuid())
+  companyId  String
+  signedById String
+  signerName String
+  fileName   String
+  size       Int
+  data       Bytes
+  signedAt   DateTime @default(now())
+
+  @@index([companyId, signedAt])
+}

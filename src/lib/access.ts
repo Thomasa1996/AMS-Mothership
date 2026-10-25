@@ -29,3 +29,8 @@ export function quoteScope(user: Viewer): Prisma.QuoteWhereInput {
 export function ownerChoices(user: Viewer): Prisma.UserWhereInput {
   return { companyId: user.companyId, active: true, ...(limitedToOwn(user) ? { id: user.id } : {}) };
 }
+
+// Signed documents (Sales > Sign documents): salespeople see the ones they signed, everyone else the whole company's.
+export function signedDocScope(user: Viewer): Prisma.SignedDocumentWhereInput {
+  return { companyId: user.companyId, ...(limitedToOwn(user) ? { signedById: user.id } : {}) };
+}
